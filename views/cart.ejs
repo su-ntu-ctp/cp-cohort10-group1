@@ -29,7 +29,11 @@
             <td>$<%= item.price.toFixed(2) %></td>
             <td>
               <form action="/cart/update/<%= item.id %>" method="POST" class="quantity-form">
-                <input type="number" name="quantity" value="<%= item.quantity %>" min="1" max="<%= item.stock %>">
+                <div class="quantity-control">
+                  <button type="button" class="quantity-btn decrease">-</button>
+                  <input type="number" name="quantity" value="<%= item.quantity %>" min="1" max="<%= item.stock %>">
+                  <button type="button" class="quantity-btn increase">+</button>
+                </div>
                 <button type="submit" class="btn btn-small">Update</button>
               </form>
             </td>

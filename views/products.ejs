@@ -10,6 +10,7 @@
         <div class="product-info">
           <h3><%= product.name %></h3>
           <p class="price">$<%= product.price.toFixed(2) %></p>
+          <p class="product-short-desc"><%= product.description.length > 80 ? product.description.substring(0, 80) + '...' : product.description %></p>
           <p class="stock"><%= product.stock %> in stock</p>
           <div class="product-actions">
             <a href="/products/<%= product.id %>" class="btn btn-primary">View Details</a>

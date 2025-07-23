@@ -17,6 +17,36 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   });
   
+  // Handle quantity control buttons
+  const decreaseButtons = document.querySelectorAll('.quantity-btn.decrease');
+  const increaseButtons = document.querySelectorAll('.quantity-btn.increase');
+  
+  decreaseButtons.forEach(button => {
+    button.addEventListener('click', function() {
+      const input = this.parentNode.querySelector('input[type="number"]');
+      const min = parseInt(input.getAttribute('min'));
+      const currentValue = parseInt(input.value);
+      
+      if (currentValue > min) {
+        input.value = currentValue - 1;
+        input.dispatchEvent(new Event('change'));
+      }
+    });
+  });
+  
+  increaseButtons.forEach(button => {
+    button.addEventListener('click', function() {
+      const input = this.parentNode.querySelector('input[type="number"]');
+      const max = parseInt(input.getAttribute('max'));
+      const currentValue = parseInt(input.value);
+      
+      if (currentValue < max) {
+        input.value = currentValue + 1;
+        input.dispatchEvent(new Event('change'));
+      }
+    });
+  });
+  
   // Auto-submit quantity update forms
   const quantityForms = document.querySelectorAll('.quantity-form');
   quantityForms.forEach(form => {
@@ -25,7 +55,11 @@ document.addEventListener('DOMContentLoaded', function() {
     
     input.addEventListener('change', function() {
       if (this.value !== originalValue) {
-        form.submit();
+        // Add a small delay to allow user to make multiple adjustments
+        clearTimeout(this.timeout);
+        this.timeout = setTimeout(() => {
+          form.submit();
+        }, 500);
       }
     });
   });

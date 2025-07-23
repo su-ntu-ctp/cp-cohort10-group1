@@ -5,41 +5,41 @@ const uuid = require('uuid');
 const sampleProducts = [
   {
     id: 1,
-    name: 'Smartphone',
+    name: 'Smartphone X12 Pro',
     price: 699.99,
-    description: 'Latest model with high-resolution camera and long battery life.',
+    description: 'Experience the future with our flagship X12 Pro smartphone. Featuring a stunning 6.5-inch AMOLED display with 120Hz refresh rate for ultra-smooth scrolling. Capture professional-quality photos with the 108MP quad-camera system and 8K video recording. Powered by the latest octa-core processor and 8GB RAM for lightning-fast performance. Includes 256GB storage, all-day 5000mAh battery with fast charging, water resistance (IP68), and advanced facial recognition security.',
     image: '/images/smartphone.jpg',
     stock: 50
   },
   {
     id: 2,
-    name: 'Laptop',
+    name: 'UltraBook Pro 16',
     price: 1299.99,
-    description: 'Powerful laptop with fast processor and ample storage.',
+    description: 'Meet the UltraBook Pro 16 - the ultimate productivity powerhouse. Featuring a brilliant 16-inch 4K display with 100% Adobe RGB color accuracy for stunning visuals. Powered by the latest 12th Gen processor with 16-core architecture and dedicated graphics for seamless multitasking and content creation. Includes 32GB high-speed RAM, 1TB SSD storage, backlit keyboard with precision trackpad, all-day battery life (up to 12 hours), Thunderbolt 4 connectivity, and military-grade durability certification. Perfect for professionals, creators, and power users.',
     image: '/images/laptop.jpg',
     stock: 30
   },
   {
     id: 3,
-    name: 'Headphones',
+    name: 'SoundWave Elite Headphones',
     price: 199.99,
-    description: 'Noise-cancelling wireless headphones with premium sound quality.',
+    description: 'Immerse yourself in audio perfection with SoundWave Elite wireless headphones. Experience industry-leading active noise cancellation with three customizable modes to control your environment. Enjoy rich, detailed sound with custom-designed 40mm drivers tuned by award-winning audio engineers. Features include premium memory foam ear cushions for all-day comfort, touch controls, voice assistant integration, multipoint Bluetooth 5.2 connectivity, 30-hour battery life, fast charging (5 hours of playback from just 10 minutes of charging), and foldable design with premium travel case.',
     image: '/images/headphones.jpg',
     stock: 100
   },
   {
     id: 4,
-    name: 'Smartwatch',
+    name: 'FitTech Pro Smartwatch',
     price: 249.99,
-    description: 'Fitness tracker with heart rate monitor and sleep analysis.',
+    description: 'Transform your fitness journey with the FitTech Pro Smartwatch. Track over 40 workout types with built-in GPS and advanced metrics for runners, swimmers, and cyclists. Monitor your health 24/7 with continuous heart rate tracking, blood oxygen monitoring, stress management tools, and comprehensive sleep analysis with personalized insights. Features include a vibrant 1.4-inch always-on display, 5ATM water resistance for swimming, ECG capability, fall detection, 7-day battery life, smartphone notifications, music control, contactless payments, and customizable watch faces. Compatible with iOS and Android.',
     image: '/images/smartwatch.jpg',
     stock: 45
   },
   {
     id: 5,
-    name: 'Tablet',
+    name: 'SlimTab Ultra',
     price: 499.99,
-    description: 'Lightweight tablet with high-resolution display and long battery life.',
+    description: 'Unleash your creativity with the SlimTab Ultra. Featuring a stunning 10.9-inch Liquid Retina display with True Tone technology for vibrant, accurate colors in any lighting. Powered by the A14 Bionic chip for desktop-class performance in a portable device. Perfect for digital artists with the included precision stylus featuring pressure sensitivity and tilt recognition. Includes 128GB storage, all-day battery life (up to 10 hours), quad speakers with spatial audio, 12MP front and rear cameras, Face ID security, and optional keyboard attachment with trackpad. Weighing just 460g and 6.1mm thin for ultimate portability.',
     image: '/images/tablet.jpg',
     stock: 25
   }

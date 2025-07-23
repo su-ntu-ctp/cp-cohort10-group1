@@ -12,48 +12,50 @@ echo "Deploying ShopMate to $ENV environment in $AWS_REGION"
 # Store original directory
 ORIGINAL_DIR=$(pwd)
 
-# Try to import existing resources into Terraform state
-echo "Checking for existing resources..."
+# Initialize Terraform
+echo "Initializing Terraform..."
 cd terraform/environments/$ENV
-
-# Try to import IAM roles if they exist
-terraform import module.shopmate.aws_iam_role.ecs_task_execution_role shopmate-execution-role-${ENV} || echo "Role not imported, will be created"
-terraform import module.shopmate.aws_iam_role.ecs_task_role shopmate-task-role-${ENV} || echo "Role not imported, will be created"
-
-# Apply Terraform with auto-approve
-echo "Applying Terraform configuration..."
 terraform init
-terraform apply -auto-approve || echo "Terraform apply had errors, but continuing..."
 
-# Get ECR repository URL directly from AWS
-echo "Getting ECR repository URL from AWS..."
-ECR_REPO_URL=$(aws ecr describe-repositories --repository-names $ECR_REPO --query 'repositories[0].repositoryUri' --output text 2>/dev/null || echo "")
+# Apply Terraform in stages to handle dependencies
+echo "Stage 1: Creating network infrastructure..."
+terraform apply -auto-approve \
+  -target="module.shopmate.aws_vpc.main" \
+  -target="module.shopmate.aws_subnet.public_a" \
+  -target="module.shopmate.aws_subnet.public_b" \
+  -target="module.shopmate.aws_internet_gateway.main" \
+  -target="module.shopmate.aws_route_table.public" \
+  -target="module.shopmate.aws_route_table_association.public_a" \
+  -target="module.shopmate.aws_route_table_association.public_b" \
+  -target="module.shopmate.aws_security_group.shopmate"
 
-if [ -z "$ECR_REPO_URL" ]; then
-  echo "Creating ECR repository..."
-  aws ecr create-repository --repository-name $ECR_REPO --region $AWS_REGION
-  ECR_REPO_URL=$(aws ecr describe-repositories --repository-names $ECR_REPO --query 'repositories[0].repositoryUri' --output text)
-fi
+echo "Stage 2: Creating ECR repository..."
+terraform apply -auto-approve -target="module.shopmate.aws_ecr_repository.shopmate"
 
-echo "ECR Repository URL: $ECR_REPO_URL"
+# Get ECR repository URL from Terraform output
+ECR_REPO_URL=$(terraform output -raw ecr_repository_url 2>/dev/null || aws ecr describe-repositories --repository-names $ECR_REPO --query 'repositories[0].repositoryUri' --output text)
 
-# Return to original directory to build Docker image
-echo "Building Docker image for linux/amd64 platform..."
+# Build and push Docker image
+echo "Building and pushing Docker image..."
 cd "$ORIGINAL_DIR"
 docker buildx build --platform=linux/amd64 --load -t $ECR_REPO:$IMAGE_TAG .
-
-# Login to ECR using the working approach
-echo "Logging in to ECR..."
 aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $(aws ecr get-authorization-token --query 'authorizationData[].proxyEndpoint' --output text)
 
-# Debug output
-echo "Local image: $ECR_REPO:$IMAGE_TAG"
-echo "Remote image: $ECR_REPO_URL:$IMAGE_TAG"
+# Check if ECR_REPO_URL is not empty
+if [ -z "$ECR_REPO_URL" ]; then
+  echo "Error: ECR repository URL is empty. Cannot tag and push image."
+  exit 1
+fi
 
-# Tag and push image
-echo "Tagging and pushing image to ECR..."
-docker tag $ECR_REPO:$IMAGE_TAG $ECR_REPO_URL:$IMAGE_TAG
-docker push $ECR_REPO_URL:$IMAGE_TAG
+echo "Tagging image: $ECR_REPO:$IMAGE_TAG as $ECR_REPO_URL:$IMAGE_TAG"
+docker tag "$ECR_REPO:$IMAGE_TAG" "$ECR_REPO_URL:$IMAGE_TAG"
+docker push "$ECR_REPO_URL:$IMAGE_TAG"
+
+# Return to Terraform directory
+cd terraform/environments/$ENV
+
+echo "Stage 3: Creating remaining infrastructure..."
+terraform apply -auto-approve
 
 echo ""
 echo "Deployment complete!"
