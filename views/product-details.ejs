@@ -1,0 +1,22 @@
+<div class="product-details">
+  <div class="product-image">
+    <img src="<%= product.image %>" alt="<%= product.name %>">
+  </div>
+  <div class="product-info">
+    <h2><%= product.name %></h2>
+    <p class="price">$<%= product.price.toFixed(2) %></p>
+    <p class="description"><%= product.description %></p>
+    <p class="stock">In Stock: <%= product.stock %></p>
+    
+    <form action="/cart/add" method="POST" class="add-to-cart-form">
+      <input type="hidden" name="productId" value="<%= product.id %>">
+      <div class="form-group">
+        <label for="quantity">Quantity:</label>
+        <input type="number" id="quantity" name="quantity" value="1" min="1" max="<%= product.stock %>">
+      </div>
+      <button type="submit" class="btn btn-primary">Add to Cart</button>
+    </form>
+    
+    <a href="/products" class="btn">Back to Products</a>
+  </div>
+</div>
