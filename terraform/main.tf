@@ -379,41 +379,38 @@ resource "aws_lb_target_group" "shopmate" {
   health_check {
     path                = "/health"
     healthy_threshold   = 3
-    unhealthy_threshold = 3
+    unhealthy_threshold = 2
     timeout             = 5
     interval            = 30
     matcher             = "200"
   }
 }
 
-# HTTP Listener - Redirects to HTTPS
-resource "aws_lb_listener" "http" {
+resource "aws_lb_listener" "shopmate" {
   load_balancer_arn = aws_lb.shopmate.arn
-  port              = 80
+  port              = "443"
+  protocol          = "HTTPS"
+  ssl_policy        = "ELBSecurityPolicy-TLS-1-2-2017-01"
+  certificate_arn   = aws_acm_certificate_validation.shopmate.certificate_arn
+
+  default_action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.shopmate.arn
+  }
+}
+
+resource "aws_lb_listener" "shopmate_http" {
+  load_balancer_arn = aws_lb.shopmate.arn
+  port              = "80"
   protocol          = "HTTP"
-  
+
   default_action {
     type = "redirect"
-    
     redirect {
       port        = "443"
       protocol    = "HTTPS"
       status_code = "HTTP_301"
     }
-  }
-}
-
-# HTTPS Listener
-resource "aws_lb_listener" "https" {
-  load_balancer_arn = aws_lb.shopmate.arn
-  port              = 443
-  protocol          = "HTTPS"
-  ssl_policy        = "ELBSecurityPolicy-2016-08"
-  certificate_arn   = aws_acm_certificate_validation.shopmate.certificate_arn
-  
-  default_action {
-    type             = "forward"
-    target_group_arn = aws_lb_target_group.shopmate.arn
   }
 }
 
@@ -424,26 +421,26 @@ resource "aws_ecs_service" "shopmate" {
   task_definition = aws_ecs_task_definition.shopmate.arn
   desired_count   = var.app_count
   launch_type     = "FARGATE"
-  
+
   network_configuration {
-    subnets          = [aws_subnet.public_a.id, aws_subnet.public_b.id]
-    security_groups  = [aws_security_group.shopmate.id]
+    subnets         = [aws_subnet.public_a.id, aws_subnet.public_b.id]
+    security_groups = [aws_security_group.shopmate.id]
     assign_public_ip = true
   }
-  
+
   load_balancer {
     target_group_arn = aws_lb_target_group.shopmate.arn
     container_name   = "shopmate"
     container_port   = 3000
   }
-  
-  depends_on = [aws_lb_listener.http, aws_lb_listener.https]
+
+  depends_on = [aws_lb_listener.shopmate]
 }
 
 # CloudWatch Dashboard
 resource "aws_cloudwatch_dashboard" "shopmate" {
   dashboard_name = "shopmate-${var.environment}"
-  
+
   dashboard_body = jsonencode({
     widgets = [
       {
@@ -454,12 +451,13 @@ resource "aws_cloudwatch_dashboard" "shopmate" {
         height = 6
         properties = {
           metrics = [
-            ["AWS/ECS", "CPUUtilization", "ServiceName", "shopmate-service-${var.environment}", "ClusterName", "shopmate-${var.environment}"]
+            ["AWS/ECS", "CPUUtilization", "ServiceName", aws_ecs_service.shopmate.name, "ClusterName", aws_ecs_cluster.shopmate.name],
+            [".", "MemoryUtilization", ".", ".", ".", "."]
           ]
           period = 300
           stat   = "Average"
           region = var.aws_region
-          title  = "CPU Utilization"
+          title  = "ECS CPU & Memory Utilization"
         }
       },
       {
@@ -470,42 +468,25 @@ resource "aws_cloudwatch_dashboard" "shopmate" {
         height = 6
         properties = {
           metrics = [
-            ["AWS/ECS", "MemoryUtilization", "ServiceName", "shopmate-service-${var.environment}", "ClusterName", "shopmate-${var.environment}"]
-          ]
-          period = 300
-          stat   = "Average"
-          region = var.aws_region
-          title  = "Memory Utilization"
-        }
-      },
-      {
-        type   = "metric"
-        x      = 0
-        y      = 6
-        width  = 12
-        height = 6
-        properties = {
-          metrics = [
-            ["AWS/DynamoDB", "ConsumedReadCapacityUnits", "TableName", aws_dynamodb_table.orders.name],
-            ["AWS/DynamoDB", "ConsumedWriteCapacityUnits", "TableName", aws_dynamodb_table.orders.name]
+            ["AWS/ApplicationELB", "RequestCount", "LoadBalancer", aws_lb.shopmate.arn_suffix],
+            [".", "TargetResponseTime", ".", "."]
           ]
           period = 300
           stat   = "Sum"
           region = var.aws_region
-          title  = "DynamoDB - Orders Table"
+          title  = "Load Balancer Metrics"
         }
       },
       {
         type   = "log"
-        x      = 12
+        x      = 0
         y      = 6
-        width  = 12
+        width  = 24
         height = 6
         properties = {
-          query   = "SOURCE '/ecs/shopmate-${var.environment}' | fields @timestamp, @message\n| sort @timestamp desc\n| limit 100"
+          query   = "SOURCE '${aws_cloudwatch_log_group.shopmate.name}' | fields @timestamp, @message | sort @timestamp desc | limit 100"
           region  = var.aws_region
           title   = "Application Logs"
-          view    = "table"
         }
       }
     ]

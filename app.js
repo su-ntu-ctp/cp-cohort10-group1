@@ -8,6 +8,7 @@ const path = require('path');
 const productRoutes = require('./routes/products');
 const cartRoutes = require('./routes/cart');
 const orderRoutes = require('./routes/orders');
+const aiRoutes = require('./routes/ai');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -66,6 +67,7 @@ app.use((err, req, res, next) => {
 app.use('/products', productRoutes);
 app.use('/cart', cartRoutes);
 app.use('/orders', orderRoutes);
+app.use('/api/ai', aiRoutes);
 
 // Health check endpoint for AWS
 app.get('/health', (req, res) => {

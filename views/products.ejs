@@ -1,4 +1,7 @@
-<h1>Products</h1>
+<div class="page-header">
+  <h1>Our Products</h1>
+  <p class="page-subtitle">Discover our amazing collection of products</p>
+</div>
 
 <div class="products-grid">
   <% if (Array.isArray(products) && products.length > 0) { %>
@@ -11,7 +14,7 @@
           <h3><%= product.name %></h3>
           <p class="price">$<%= product.price.toFixed(2) %></p>
           <p class="product-short-desc"><%= product.description.length > 80 ? product.description.substring(0, 80) + '...' : product.description %></p>
-          <p class="stock"><%= product.stock %> in stock</p>
+          <div class="stock">📦 <%= product.stock %> in stock</div>
           <div class="product-actions">
             <a href="/products/<%= product.id %>" class="btn btn-primary">View Details</a>
             <form action="/cart/add" method="POST">

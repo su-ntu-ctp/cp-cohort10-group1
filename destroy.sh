@@ -4,41 +4,45 @@ set -e
 # Configuration
 ENV=${1:-dev}
 AWS_REGION=${2:-ap-southeast-1}
-ECR_REPO="shopmate"
 
-echo "Destroying ShopMate resources in $ENV environment in $AWS_REGION"
-
-# Delete all images from ECR repository
-echo "Deleting images from ECR repository..."
-IMAGES=$(aws ecr list-images --repository-name $ECR_REPO --region $AWS_REGION --query 'imageIds[*]' --output json 2>/dev/null || echo "[]")
-if [ "$IMAGES" != "[]" ]; then
-  aws ecr batch-delete-image --repository-name $ECR_REPO --image-ids "$IMAGES" --region $AWS_REGION || echo "No images to delete"
+# Validate environment
+if [[ ! "$ENV" =~ ^(dev|uat|prod)$ ]]; then
+  echo "❌ Error: Environment must be dev, uat, or prod"
+  echo "Usage: ./destroy.sh [dev|uat|prod] [aws-region]"
+  exit 1
 fi
 
-# Destroy Terraform resources
-echo "Destroying Terraform resources..."
-cd terraform/environments/$ENV
+echo "🗑️  Destroying ShopMate resources in $ENV environment"
+
+# Store original directory
+ORIGINAL_DIR=$(pwd)
+TERRAFORM_DIR="$ORIGINAL_DIR/terraform/environments/$ENV"
+
+# Check if Terraform environment directory exists
+if [ ! -d "$TERRAFORM_DIR" ]; then
+  echo "❌ Error: Terraform environment directory not found: $TERRAFORM_DIR"
+  exit 1
+fi
+
+# Navigate to Terraform environment
+cd "$TERRAFORM_DIR"
+
+# Initialize Terraform
+echo "📦 Initializing Terraform in $(pwd)..."
 terraform init
 
-# First destroy the certificate validation resources
-echo "First destroying certificate validation resources..."
-terraform destroy -auto-approve -target="module.shopmate.aws_route53_record.cert_validation" || echo "Certificate validation records may already be gone"
-terraform destroy -auto-approve -target="module.shopmate.aws_acm_certificate_validation.shopmate" || echo "Certificate validation may already be gone"
+# Clean up ECR images first (minimal AWS CLI usage)
+echo "🧹 Cleaning up ECR images..."
+ECR_REPO_URL=$(terraform output -raw ecr_repository_url 2>/dev/null || echo "")
+if [ ! -z "$ECR_REPO_URL" ]; then
+  REPO_NAME=$(echo $ECR_REPO_URL | cut -d'/' -f2)
+  aws ecr batch-delete-image --repository-name $REPO_NAME --image-ids imageTag=latest --region $AWS_REGION 2>/dev/null || echo "No images to delete"
+fi
 
-# Then destroy the ACM certificate
-echo "Destroying ACM certificate..."
-terraform destroy -auto-approve -target="module.shopmate.aws_acm_certificate.shopmate" || echo "Certificate may already be gone"
-
-# Then destroy the ECS service if it exists
-echo "Destroying ECS service if it exists..."
-terraform destroy -auto-approve -target="module.shopmate.aws_ecs_service.shopmate" || echo "ECS service may not exist or already be gone"
-
-# Finally destroy everything else
-echo "Destroying remaining resources..."
+# Destroy all resources with Terraform
+echo "💥 Destroying infrastructure..."
 terraform destroy -auto-approve
 
-# Delete ECR repository
-echo "Deleting ECR repository..."
-aws ecr delete-repository --repository-name $ECR_REPO --force --region $AWS_REGION || echo "ECR repository not found or already deleted"
-
-echo "Cleanup complete!"
+echo ""
+echo "✅ Cleanup complete!"
+echo "🔍 Verify in AWS Console that all resources have been removed"
