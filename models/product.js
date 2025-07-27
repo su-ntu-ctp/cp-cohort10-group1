@@ -1,4 +1,4 @@
-const { PRODUCTS_TABLE, scan, get, batchWrite } = require('../utils/dynamodb');
+const { PRODUCTS_TABLE, scan, get, batchWrite, put } = require('../utils/dynamodb');
 const uuid = require('uuid');
 
 // Sample product data - will be used to initialize the DynamoDB table
@@ -86,5 +86,21 @@ exports.getProductById = async (id) => {
   } catch (error) {
     console.error(`Error getting product ${id}:`, error);
     return sampleProducts.find(product => product.id === parseInt(id)); // Fallback
+  }
+};
+
+// Update product
+exports.updateProduct = async (id, updates) => {
+  try {
+    const product = await get(PRODUCTS_TABLE, { id: parseInt(id) });
+    if (product) {
+      const updatedProduct = { ...product, ...updates };
+      await put(PRODUCTS_TABLE, updatedProduct);
+      return updatedProduct;
+    }
+    return null;
+  } catch (error) {
+    console.error(`Error updating product ${id}:`, error);
+    throw error;
   }
 };

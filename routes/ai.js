@@ -68,8 +68,25 @@ router.post('/chat', async (req, res) => {
       }
     }
     
+    // Smart product suggestions based on keywords
+    if (lowerMessage.includes('best') || lowerMessage.includes('top')) {
+      return res.json({ response: 'Our top-rated products: 📱 Smartphone X12 Pro for photography, 💻 UltraBook Pro 16 for productivity, 🎧 SoundWave Elite for audio lovers, ⌚ FitTech Pro for fitness, and 📱 SlimTab Ultra for creativity. What\'s your priority?' });
+    }
+    
+    if (lowerMessage.includes('new') || lowerMessage.includes('latest')) {
+      return res.json({ response: 'Check out our newest arrivals! All our products feature the latest technology. The Smartphone X12 Pro has the newest camera system, and UltraBook Pro 16 has the latest 12th Gen processor. What type of latest tech interests you?' });
+    }
+    
+    if (lowerMessage.includes('gift') || lowerMessage.includes('present')) {
+      return res.json({ response: 'Perfect gifts for tech lovers! 🎁 For him: UltraBook Pro or Smartphone X12 Pro. For her: SlimTab Ultra or SoundWave Elite headphones. For fitness enthusiasts: FitTech Pro Smartwatch. What\'s your budget range?' });
+    }
+    
+    if (lowerMessage.includes('work') || lowerMessage.includes('office') || lowerMessage.includes('business')) {
+      return res.json({ response: 'For work and business: UltraBook Pro 16 offers 12-hour battery and powerful performance. Smartphone X12 Pro for professional photography. SoundWave Elite for clear calls. Need specific work requirements?' });
+    }
+    
     // Default response for unmatched queries
-    const defaultResponse = 'I can help with product recommendations, comparisons, pricing, shipping, and returns. For detailed technical questions or specific product inquiries, please email our experts at support@shopmate.com - we\'ll get back to you within 24 hours!';
+    const defaultResponse = 'I can help with product recommendations, comparisons, pricing, shipping, and returns. Try asking "best laptop for work" or "gift ideas". For detailed technical questions, email support@shopmate.com - we\'ll respond within 24 hours!';
     
     res.json({ response: defaultResponse });
   } catch (error) {

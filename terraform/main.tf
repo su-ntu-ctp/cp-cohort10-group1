@@ -414,6 +414,47 @@ resource "aws_lb_listener" "shopmate_http" {
   }
 }
 
+# Auto Scaling Target
+resource "aws_appautoscaling_target" "ecs_target" {
+  max_capacity       = var.environment == "prod" ? 10 : 5
+  min_capacity       = var.app_count
+  resource_id        = "service/${aws_ecs_cluster.shopmate.name}/${aws_ecs_service.shopmate.name}"
+  scalable_dimension = "ecs:service:DesiredCount"
+  service_namespace  = "ecs"
+}
+
+# Auto Scaling Policy - CPU
+resource "aws_appautoscaling_policy" "ecs_cpu_policy" {
+  name               = "shopmate-cpu-scaling-${var.environment}"
+  policy_type        = "TargetTrackingScaling"
+  resource_id        = aws_appautoscaling_target.ecs_target.resource_id
+  scalable_dimension = aws_appautoscaling_target.ecs_target.scalable_dimension
+  service_namespace  = aws_appautoscaling_target.ecs_target.service_namespace
+
+  target_tracking_scaling_policy_configuration {
+    predefined_metric_specification {
+      predefined_metric_type = "ECSServiceAverageCPUUtilization"
+    }
+    target_value = 70.0
+  }
+}
+
+# Auto Scaling Policy - Memory
+resource "aws_appautoscaling_policy" "ecs_memory_policy" {
+  name               = "shopmate-memory-scaling-${var.environment}"
+  policy_type        = "TargetTrackingScaling"
+  resource_id        = aws_appautoscaling_target.ecs_target.resource_id
+  scalable_dimension = aws_appautoscaling_target.ecs_target.scalable_dimension
+  service_namespace  = aws_appautoscaling_target.ecs_target.service_namespace
+
+  target_tracking_scaling_policy_configuration {
+    predefined_metric_specification {
+      predefined_metric_type = "ECSServiceAverageMemoryUtilization"
+    }
+    target_value = 80.0
+  }
+}
+
 # ECS Service
 resource "aws_ecs_service" "shopmate" {
   name            = "shopmate-service-${var.environment}"
@@ -447,7 +488,7 @@ resource "aws_cloudwatch_dashboard" "shopmate" {
         type   = "metric"
         x      = 0
         y      = 0
-        width  = 12
+        width  = 8
         height = 6
         properties = {
           metrics = [
@@ -457,14 +498,30 @@ resource "aws_cloudwatch_dashboard" "shopmate" {
           period = 300
           stat   = "Average"
           region = var.aws_region
-          title  = "ECS CPU & Memory Utilization"
+          title  = "ECS Resources"
         }
       },
       {
         type   = "metric"
-        x      = 12
+        x      = 8
         y      = 0
-        width  = 12
+        width  = 8
+        height = 6
+        properties = {
+          metrics = [
+            ["AWS/ECS", "RunningTaskCount", "ServiceName", aws_ecs_service.shopmate.name, "ClusterName", aws_ecs_cluster.shopmate.name]
+          ]
+          period = 300
+          stat   = "Average"
+          region = var.aws_region
+          title  = "Container Count"
+        }
+      },
+      {
+        type   = "metric"
+        x      = 16
+        y      = 0
+        width  = 8
         height = 6
         properties = {
           metrics = [
@@ -474,19 +531,36 @@ resource "aws_cloudwatch_dashboard" "shopmate" {
           period = 300
           stat   = "Sum"
           region = var.aws_region
-          title  = "Load Balancer Metrics"
+          title  = "Traffic & Response Time"
+        }
+      },
+      {
+        type   = "metric"
+        x      = 0
+        y      = 6
+        width  = 12
+        height = 6
+        properties = {
+          metrics = [
+            ["AWS/DynamoDB", "ConsumedReadCapacityUnits", "TableName", aws_dynamodb_table.orders.name],
+            [".", "ConsumedWriteCapacityUnits", ".", "."]
+          ]
+          period = 300
+          stat   = "Sum"
+          region = var.aws_region
+          title  = "Orders Database Activity"
         }
       },
       {
         type   = "log"
-        x      = 0
+        x      = 12
         y      = 6
-        width  = 24
+        width  = 12
         height = 6
         properties = {
-          query   = "SOURCE '${aws_cloudwatch_log_group.shopmate.name}' | fields @timestamp, @message | sort @timestamp desc | limit 100"
+          query   = "SOURCE '${aws_cloudwatch_log_group.shopmate.name}' | fields @timestamp, @message | filter @message like /order/ | sort @timestamp desc | limit 50"
           region  = var.aws_region
-          title   = "Application Logs"
+          title   = "Order Activity Logs"
         }
       }
     ]

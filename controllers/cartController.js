@@ -73,64 +73,94 @@ exports.addToCart = async (req, res) => {
   const productId = parseInt(req.body.productId);
   const quantity = parseInt(req.body.quantity) || 1;
   
-  const product = await Product.getProductById(productId);
-  if (!product) {
-    return res.status(404).json({ error: 'Product not found' });
+  try {
+    const product = await Product.getProductById(productId);
+    if (!product) {
+      return res.redirect('/products?error=Product not found');
+    }
+    
+    // Check stock availability
+    if (product.stock < quantity) {
+      return res.redirect('/products?error=Insufficient stock');
+    }
+    
+    // Reduce product stock
+    const newStock = product.stock - quantity;
+    await Product.updateProduct(productId, { stock: newStock });
+    
+    // Get current cart
+    const cartItems = await getCartFromDB(userId);
+    
+    // Check if product is already in cart
+    const existingItemIndex = cartItems.findIndex(item => item.productId === productId);
+    
+    if (existingItemIndex >= 0) {
+      // Update quantity if product already in cart
+      cartItems[existingItemIndex].quantity += quantity;
+    } else {
+      // Add new item to cart
+      cartItems.push({
+        productId,
+        quantity
+      });
+    }
+    
+    // Save updated cart
+    await saveCartToDB(userId, cartItems);
+    
+    // Update session
+    req.session.cart = cartItems;
+    
+    console.log(`Added product ${productId} to cart, reduced stock to ${newStock}`);
+    res.redirect('/cart');
+  } catch (error) {
+    console.error('Error adding to cart:', error);
+    res.redirect('/products?error=Failed to add item to cart');
   }
-  
-  // Get current cart
-  const cartItems = await getCartFromDB(userId);
-  
-  // Check if product is already in cart
-  const existingItemIndex = cartItems.findIndex(item => item.productId === productId);
-  
-  if (existingItemIndex >= 0) {
-    // Update quantity if product already in cart
-    cartItems[existingItemIndex].quantity += quantity;
-  } else {
-    // Add new item to cart
-    cartItems.push({
-      productId,
-      quantity
-    });
-  }
-  
-  // Save updated cart
-  await saveCartToDB(userId, cartItems);
-  
-  // Update session
-  req.session.cart = cartItems;
-  
-  res.redirect('/cart');
 };
 
 // Update cart item
 exports.updateCartItem = async (req, res) => {
   const userId = getUserId(req);
   const productId = parseInt(req.params.id);
-  const quantity = parseInt(req.body.quantity);
+  const newQuantity = parseInt(req.body.quantity);
   
-  // Get current cart
-  let cartItems = await getCartFromDB(userId);
-  
-  if (quantity <= 0) {
-    // Remove item if quantity is 0 or negative
-    cartItems = cartItems.filter(item => item.productId !== productId);
-  } else {
-    // Update quantity
+  try {
+    // Get current cart
+    let cartItems = await getCartFromDB(userId);
     const itemIndex = cartItems.findIndex(item => item.productId === productId);
+    
     if (itemIndex >= 0) {
-      cartItems[itemIndex].quantity = quantity;
+      const currentQuantity = cartItems[itemIndex].quantity;
+      const product = await Product.getProductById(productId);
+      
+      if (newQuantity <= 0) {
+        // Remove item and restore all stock
+        const newStock = product.stock + currentQuantity;
+        await Product.updateProduct(productId, { stock: newStock });
+        cartItems = cartItems.filter(item => item.productId !== productId);
+        console.log(`Removed product ${productId}, restored stock to ${newStock}`);
+      } else {
+        // Update quantity and adjust stock
+        const quantityDiff = currentQuantity - newQuantity;
+        const newStock = product.stock + quantityDiff;
+        await Product.updateProduct(productId, { stock: newStock });
+        cartItems[itemIndex].quantity = newQuantity;
+        console.log(`Updated product ${productId} quantity to ${newQuantity}, stock now ${newStock}`);
+      }
     }
+    
+    // Save updated cart
+    await saveCartToDB(userId, cartItems);
+    
+    // Update session
+    req.session.cart = cartItems;
+    
+    res.redirect('/cart');
+  } catch (error) {
+    console.error('Error updating cart item:', error);
+    res.redirect('/cart');
   }
-  
-  // Save updated cart
-  await saveCartToDB(userId, cartItems);
-  
-  // Update session
-  req.session.cart = cartItems;
-  
-  res.redirect('/cart');
 };
 
 // Remove from cart
@@ -138,30 +168,66 @@ exports.removeFromCart = async (req, res) => {
   const userId = getUserId(req);
   const productId = parseInt(req.params.id);
   
-  // Get current cart
-  let cartItems = await getCartFromDB(userId);
-  
-  // Remove item
-  cartItems = cartItems.filter(item => item.productId !== productId);
-  
-  // Save updated cart
-  await saveCartToDB(userId, cartItems);
-  
-  // Update session
-  req.session.cart = cartItems;
-  
-  res.redirect('/cart');
+  try {
+    // Get current cart
+    let cartItems = await getCartFromDB(userId);
+    
+    // Find the item to remove
+    const itemToRemove = cartItems.find(item => item.productId === productId);
+    
+    if (itemToRemove) {
+      // Restore stock
+      const product = await Product.getProductById(productId);
+      if (product) {
+        const newStock = product.stock + itemToRemove.quantity;
+        await Product.updateProduct(productId, { stock: newStock });
+        console.log(`Removed product ${productId} from cart, restored stock to ${newStock}`);
+      }
+    }
+    
+    // Remove item from cart
+    cartItems = cartItems.filter(item => item.productId !== productId);
+    
+    // Save updated cart
+    await saveCartToDB(userId, cartItems);
+    
+    // Update session
+    req.session.cart = cartItems;
+    
+    res.redirect('/cart');
+  } catch (error) {
+    console.error('Error removing from cart:', error);
+    res.redirect('/cart');
+  }
 };
 
 // Clear cart
 exports.clearCart = async (req, res) => {
   const userId = getUserId(req);
   
-  // Save empty cart
-  await saveCartToDB(userId, []);
-  
-  // Update session
-  req.session.cart = [];
-  
-  res.redirect('/cart');
+  try {
+    // Get current cart to restore stock
+    const cartItems = await getCartFromDB(userId);
+    
+    // Restore stock for all items
+    for (const item of cartItems) {
+      const product = await Product.getProductById(item.productId);
+      if (product) {
+        const newStock = product.stock + item.quantity;
+        await Product.updateProduct(item.productId, { stock: newStock });
+        console.log(`Cleared cart: restored ${item.quantity} units of product ${item.productId}`);
+      }
+    }
+    
+    // Save empty cart
+    await saveCartToDB(userId, []);
+    
+    // Update session
+    req.session.cart = [];
+    
+    res.redirect('/cart');
+  } catch (error) {
+    console.error('Error clearing cart:', error);
+    res.redirect('/cart');
+  }
 };

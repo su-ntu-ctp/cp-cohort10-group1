@@ -1,6 +1,6 @@
-<div class="page-header">
+<div class="products-header">
   <h1>Our Products</h1>
-  <p class="page-subtitle">Discover our amazing collection of products</p>
+  <p class="products-subtitle">Discover our premium collection of technology and lifestyle products</p>
 </div>
 
 <div class="products-grid">
@@ -17,10 +17,10 @@
           <div class="stock">📦 <%= product.stock %> in stock</div>
           <div class="product-actions">
             <a href="/products/<%= product.id %>" class="btn btn-primary">View Details</a>
-            <form action="/cart/add" method="POST">
+            <form action="/cart/add" method="POST" style="flex: 1;">
               <input type="hidden" name="productId" value="<%= product.id %>">
               <input type="hidden" name="quantity" value="1">
-              <button type="submit" class="btn btn-secondary">Add to Cart</button>
+              <button type="submit" class="btn btn-secondary" style="width: 100%;">Add to Cart</button>
             </form>
           </div>
         </div>

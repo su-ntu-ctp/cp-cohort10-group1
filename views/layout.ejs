@@ -13,6 +13,7 @@
       <h1><a href="/">ShopMate</a></h1>
       <nav>
         <ul>
+          <li><a href="/">Home</a></li>
           <li><a href="/products">Products</a></li>
           <li><a href="/cart">Cart (<span id="cart-count"><%= typeof cartCount !== 'undefined' ? cartCount : 0 %></span>)</a></li>
           <li><a href="/orders">Orders</a></li>
@@ -21,7 +22,7 @@
     </div>
   </header>
   
-  <main class="container">
+  <main class="container <%= content === 'home' ? 'home' : '' %>">
     <%- include(content) %>
   </main>
   

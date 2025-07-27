@@ -65,6 +65,7 @@ app.use((err, req, res, next) => {
 
 // Routes
 app.use('/products', productRoutes);
+app.use('/shop', productRoutes);
 app.use('/cart', cartRoutes);
 app.use('/orders', orderRoutes);
 app.use('/api/ai', aiRoutes);
@@ -80,7 +81,11 @@ app.get('/health', (req, res) => {
 
 // Home route
 app.get('/', (req, res) => {
-  res.redirect('/products');
+  const cartCount = req.session.cart ? req.session.cart.length : 0;
+  res.render('layout', { 
+    content: 'home',
+    cartCount
+  });
 });
 
 // Start server
