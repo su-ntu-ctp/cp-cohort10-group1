@@ -23,6 +23,10 @@ resource "aws_acm_certificate_validation" "shopmate" {
 }
 
 # Route53 Zone (use existing zone if available)
+# uses ternary opearation to decide if zone needs to be created condition ? value_if_true : value_if_false
+# when set to flase the data block witll have count = 1 and will be executed and the resource block count will be
+# set to 0 and not implemented.
+
 data "aws_route53_zone" "selected" {
   count = var.create_route53_zone ? 0 : 1
   name  = var.route53_zone_name
