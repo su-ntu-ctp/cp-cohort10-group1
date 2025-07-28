@@ -26,6 +26,11 @@ const scan = async (params) => {
     params = { TableName: params };
   }
   
+  // Add resource limits to prevent excessive data retrieval
+  if (!params.Limit) {
+    params.Limit = 1000; // Maximum 1000 items per scan
+  }
+  
   const command = new ScanCommand(params);
   const response = await dynamoDB.send(command);
   return response.Items || [];
@@ -63,6 +68,11 @@ const deleteItem = async (tableName, key) => {
 };
 
 const batchWrite = async (tableName, items) => {
+  // Limit batch size to prevent resource exhaustion
+  if (items.length > 25) {
+    throw new Error('Batch write limited to 25 items maximum');
+  }
+  
   const putRequests = items.map(item => ({
     PutRequest: { Item: item }
   }));

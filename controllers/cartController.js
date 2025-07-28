@@ -67,11 +67,35 @@ exports.viewCart = async (req, res) => {
   });
 };
 
-// Add to cart
+// Add to cart with resource limits
 exports.addToCart = async (req, res) => {
   const userId = getUserId(req);
   const productId = parseInt(req.body.productId);
-  const quantity = parseInt(req.body.quantity) || 1;
+  let quantity = parseInt(req.body.quantity) || 1;
+  
+  // Input validation and resource limits
+  if (!productId || productId <= 0) {
+    return res.redirect('/products?error=Invalid product ID');
+  }
+  
+  if (quantity <= 0 || quantity > 99) {
+    return res.redirect('/products?error=Invalid quantity (1-99 allowed)');
+  }
+  
+  // Limit total cart items to prevent resource exhaustion
+  const cartItems = await getCartFromDB(userId);
+  if (cartItems.length >= 50) {
+    return res.redirect('/products?error=Cart is full (maximum 50 items)');
+  }
+  
+  // Limit total quantity per item
+  const existingItem = cartItems.find(item => item.productId === productId);
+  if (existingItem && (existingItem.quantity + quantity) > 99) {
+    quantity = Math.max(0, 99 - existingItem.quantity);
+    if (quantity === 0) {
+      return res.redirect('/products?error=Maximum quantity per item reached (99)');
+    }
+  }
   
   try {
     const product = await Product.getProductById(productId);

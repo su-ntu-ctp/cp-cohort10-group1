@@ -5,6 +5,16 @@ const router = express.Router();
 router.post('/chat', async (req, res) => {
   try {
     const { message } = req.body;
+    
+    // Input validation and resource limits
+    if (!message || typeof message !== 'string') {
+      return res.status(400).json({ error: 'Invalid message format' });
+    }
+    
+    if (message.length > 1000) {
+      return res.status(400).json({ error: 'Message too long (maximum 1000 characters)' });
+    }
+    
     const lowerMessage = message.toLowerCase();
     
     // Product-specific recommendations based on actual products
