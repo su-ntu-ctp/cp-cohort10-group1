@@ -2,6 +2,45 @@ require('dotenv').config();
 const express = require('express');
 const session = require('express-session');
 const bodyParser = require('body-parser');
+
+// Simple rate limiting middleware (alternative to express-rate-limit)
+const rateLimit = (windowMs, max) => {
+  const requests = new Map();
+  
+  return (req, res, next) => {
+    const key = req.ip;
+    const now = Date.now();
+    const windowStart = now - windowMs;
+    
+    if (!requests.has(key)) {
+      requests.set(key, []);
+    }
+    
+    const userRequests = requests.get(key);
+    const validRequests = userRequests.filter(time => time > windowStart);
+    
+    if (validRequests.length >= max) {
+      return res.status(429).json({ error: 'Too many requests, please try again later.' });
+    }
+    
+    validRequests.push(now);
+    requests.set(key, validRequests);
+    
+    // Clean up old entries periodically
+    if (Math.random() < 0.01) {
+      for (const [ip, times] of requests.entries()) {
+        const validTimes = times.filter(time => time > windowStart);
+        if (validTimes.length === 0) {
+          requests.delete(ip);
+        } else {
+          requests.set(ip, validTimes);
+        }
+      }
+    }
+    
+    next();
+  };
+};
 const path = require('path');
 
 // Import routes
@@ -63,12 +102,16 @@ app.use((err, req, res, next) => {
   });
 });
 
+// Rate limiting for expensive operations
+const orderRateLimit = rateLimit(15 * 60 * 1000, 10); // 10 requests per 15 minutes
+const generalRateLimit = rateLimit(15 * 60 * 1000, 100); // 100 requests per 15 minutes
+
 // Routes
-app.use('/products', productRoutes);
-app.use('/shop', productRoutes);
-app.use('/cart', cartRoutes);
-app.use('/orders', orderRoutes);
-app.use('/api/ai', aiRoutes);
+app.use('/products', generalRateLimit, productRoutes);
+app.use('/shop', generalRateLimit, productRoutes);
+app.use('/cart', generalRateLimit, cartRoutes);
+app.use('/orders', orderRateLimit, orderRoutes);
+app.use('/api/ai', generalRateLimit, aiRoutes);
 
 // Health check endpoint for AWS
 app.get('/health', (req, res) => {
@@ -79,8 +122,9 @@ app.get('/health', (req, res) => {
   });
 });
 
-// CPU stress test endpoint for autoscaling testing
-app.get('/stress', (req, res) => {
+// CPU stress test endpoint for autoscaling testing (rate limited)
+const stressRateLimit = rateLimit(60 * 1000, 50); // 50 requests per minute
+app.get('/stress', stressRateLimit, (req, res) => {
   const start = Date.now();
   // CPU-intensive calculation for 5 seconds
   while (Date.now() - start < 5000) {
