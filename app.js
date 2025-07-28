@@ -79,6 +79,16 @@ app.get('/health', (req, res) => {
   });
 });
 
+// CPU stress test endpoint for autoscaling testing
+app.get('/stress', (req, res) => {
+  const start = Date.now();
+  // CPU-intensive calculation for 5 seconds
+  while (Date.now() - start < 5000) {
+    Math.random() * Math.random();
+  }
+  res.json({ message: 'CPU stress test completed', duration: Date.now() - start });
+});
+
 // Home route
 app.get('/', (req, res) => {
   const cartCount = req.session.cart ? req.session.cart.length : 0;
