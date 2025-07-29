@@ -68,6 +68,9 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 const ENV = process.env.NODE_ENV || 'development';
 
+// Security: Disable X-Powered-By header to prevent information exposure
+app.disable('x-powered-by');
+
 // Resource allocation protection middleware
 app.use(bodyParser.json({ limit: '1mb' })); // Limit JSON payload size
 app.use(bodyParser.urlencoded({ extended: true, limit: '1mb' })); // Limit form data size
