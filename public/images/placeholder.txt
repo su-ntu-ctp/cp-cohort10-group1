@@ -1,0 +1,4 @@
+This directory will contain product images.
+
+For now, we're using placeholder URLs in the product model, but in a real application, 
+you would upload actual product images to this directory.

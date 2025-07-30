@@ -1,0 +1,61 @@
+<h2>Shopping Cart</h2>
+
+<% if (cart.length === 0) { %>
+  <div class="empty-cart">
+    <p>Your cart is empty.</p>
+    <a href="/products" class="btn">Continue Shopping</a>
+  </div>
+<% } else { %>
+  <div class="cart-items">
+    <table>
+      <thead>
+        <tr>
+          <th>Product</th>
+          <th>Price</th>
+          <th>Quantity</th>
+          <th>Total</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% cart.forEach(item => { %>
+          <tr>
+            <td>
+              <div class="cart-product">
+                <img src="<%= item.image %>" alt="<%= item.name %>">
+                <span><%= item.name %></span>
+              </div>
+            </td>
+            <td>$<%= item.price.toFixed(2) %></td>
+            <td>
+              <form action="/cart/update/<%= item.id %>" method="POST" class="quantity-form">
+                <div class="quantity-control">
+                  <button type="button" class="quantity-btn decrease">-</button>
+                  <input type="number" name="quantity" value="<%= item.quantity %>" min="1" max="<%= item.stock %>">
+                  <button type="button" class="quantity-btn increase">+</button>
+                </div>
+                <button type="submit" class="btn btn-small">Update</button>
+              </form>
+            </td>
+            <td>$<%= item.itemTotal.toFixed(2) %></td>
+            <td>
+              <a href="/cart/remove/<%= item.id %>" class="btn btn-danger">Remove</a>
+            </td>
+          </tr>
+        <% }) %>
+      </tbody>
+      <tfoot>
+        <tr>
+          <td colspan="3"><strong>Total</strong></td>
+          <td colspan="2"><strong>$<%= total.toFixed(2) %></strong></td>
+        </tr>
+      </tfoot>
+    </table>
+    
+    <div class="cart-actions">
+      <a href="/products" class="btn">Continue Shopping</a>
+      <a href="/cart/clear" class="btn btn-danger">Clear Cart</a>
+      <a href="/orders/checkout" class="btn btn-primary">Checkout</a>
+    </div>
+  </div>
+<% } %>
