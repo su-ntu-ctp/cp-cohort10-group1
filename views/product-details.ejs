@@ -1,0 +1,103 @@
+<div class="product-details">
+  <div class="product-image">
+    <img src="<%= product.image %>" alt="<%= product.name %>">
+  </div>
+  <div class="product-info">
+    <h2><%= product.name %></h2>
+    <p class="price">$<%= product.price.toFixed(2) %></p>
+    <div class="description">
+      <h3>Product Description</h3>
+      <p><%= product.description %></p>
+    </div>
+    
+    <div class="product-features">
+      <h3>Key Features</h3>
+      <ul>
+        <% if (product.name.includes('Smartphone')) { %>
+          <li>Stunning 6.5-inch AMOLED display</li>
+          <li>Professional-grade camera system</li>
+          <li>All-day battery life with fast charging</li>
+          <li>Advanced security features</li>
+          <li>Water and dust resistant (IP68)</li>
+        <% } else if (product.name.includes('UltraBook') || product.name.includes('Laptop')) { %>
+          <li>Ultra-high resolution 4K display</li>
+          <li>Powerful performance for demanding tasks</li>
+          <li>Premium build quality and design</li>
+          <li>Enhanced connectivity options</li>
+          <li>Military-grade durability testing</li>
+        <% } else if (product.name.includes('Headphones')) { %>
+          <li>Industry-leading noise cancellation</li>
+          <li>Premium audio quality</li>
+          <li>All-day comfort and battery life</li>
+          <li>Intuitive touch controls</li>
+          <li>Seamless device switching</li>
+        <% } else if (product.name.includes('Smartwatch')) { %>
+          <li>Comprehensive health monitoring</li>
+          <li>Advanced fitness tracking</li>
+          <li>Smart notifications and controls</li>
+          <li>Water resistant for swimming</li>
+          <li>Week-long battery life</li>
+        <% } else if (product.name.includes('Tablet')) { %>
+          <li>Stunning display with True Tone technology</li>
+          <li>Desktop-class performance</li>
+          <li>Creative tools with precision stylus</li>
+          <li>All-day battery life</li>
+          <li>Ultra-portable design</li>
+        <% } %>
+      </ul>
+    </div>
+    <div class="product-specs">
+      <h3>Specifications</h3>
+      <ul>
+        <% if (product.name.includes('Smartphone')) { %>
+          <li><strong>Display:</strong> 6.5-inch AMOLED, 120Hz refresh rate</li>
+          <li><strong>Camera:</strong> 108MP quad-camera system, 8K video</li>
+          <li><strong>Processor:</strong> Latest octa-core processor</li>
+          <li><strong>Memory:</strong> 8GB RAM, 256GB storage</li>
+          <li><strong>Battery:</strong> 5000mAh with fast charging</li>
+        <% } else if (product.name.includes('UltraBook') || product.name.includes('Laptop')) { %>
+          <li><strong>Display:</strong> 16-inch 4K, 100% Adobe RGB</li>
+          <li><strong>Processor:</strong> 12th Gen 16-core architecture</li>
+          <li><strong>Memory:</strong> 32GB RAM, 1TB SSD</li>
+          <li><strong>Graphics:</strong> Dedicated GPU</li>
+          <li><strong>Battery:</strong> Up to 12 hours</li>
+        <% } else if (product.name.includes('Headphones')) { %>
+          <li><strong>Driver:</strong> Custom-designed 40mm</li>
+          <li><strong>Noise Cancellation:</strong> Active, 3 modes</li>
+          <li><strong>Battery:</strong> 30 hours playback</li>
+          <li><strong>Connectivity:</strong> Bluetooth 5.2, multipoint</li>
+          <li><strong>Features:</strong> Touch controls, voice assistant</li>
+        <% } else if (product.name.includes('Smartwatch')) { %>
+          <li><strong>Display:</strong> 1.4-inch always-on</li>
+          <li><strong>Sensors:</strong> Heart rate, blood oxygen, GPS</li>
+          <li><strong>Water Resistance:</strong> 5ATM (swimming)</li>
+          <li><strong>Battery:</strong> 7-day battery life</li>
+          <li><strong>Features:</strong> ECG, fall detection, payments</li>
+        <% } else if (product.name.includes('Tablet')) { %>
+          <li><strong>Display:</strong> 10.9-inch Liquid Retina</li>
+          <li><strong>Processor:</strong> A14 Bionic chip</li>
+          <li><strong>Storage:</strong> 128GB</li>
+          <li><strong>Battery:</strong> Up to 10 hours</li>
+          <li><strong>Features:</strong> Precision stylus, Face ID</li>
+        <% } %>
+      </ul>
+    </div>
+    
+    <p class="stock">In Stock: <%= product.stock %></p>
+    
+    <form action="/cart/add" method="POST" class="add-to-cart-form">
+      <input type="hidden" name="productId" value="<%= product.id %>">
+      <div class="form-group">
+        <label for="quantity">Quantity:</label>
+        <div class="quantity-control">
+          <button type="button" class="quantity-btn decrease">-</button>
+          <input type="number" id="quantity" name="quantity" value="1" min="1" max="<%= product.stock %>">
+          <button type="button" class="quantity-btn increase">+</button>
+        </div>
+      </div>
+      <button type="submit" class="btn btn-primary">Add to Cart</button>
+    </form>
+    
+    <a href="/products" class="btn">Back to Products</a>
+  </div>
+</div>

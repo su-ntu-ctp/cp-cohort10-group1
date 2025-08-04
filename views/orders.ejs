@@ -1,0 +1,46 @@
+<h2>Your Orders</h2>
+
+<% if (orders.length === 0) { %>
+  <div class="empty-orders">
+    <p>You have no orders yet.</p>
+    <a href="/products" class="btn">Start Shopping</a>
+  </div>
+<% } else { %>
+  <div class="orders-list">
+    <% orders.forEach(order => { %>
+      <div class="order-card">
+        <div class="order-header">
+          <div>
+            <h3>Order #<%= order.id %></h3>
+            <p>Date: <%= new Date(order.date).toLocaleString() %></p>
+          </div>
+          <div class="order-status <%= order.status.toLowerCase() %>">
+            <%= order.status %>
+          </div>
+        </div>
+        
+        <div class="order-summary">
+          <p><strong>Items:</strong> <%= order.items.reduce((sum, item) => sum + item.quantity, 0) %></p>
+          <p><strong>Total:</strong> $<%= order.total.toFixed(2) %></p>
+        </div>
+        
+        <div class="order-items">
+          <% order.items.forEach(item => { %>
+            <div class="order-item">
+              <span><%= item.product.name %> x <%= item.quantity %></span>
+              <span>$<%= item.itemTotal.toFixed(2) %></span>
+            </div>
+          <% }) %>
+        </div>
+        
+        <div class="order-actions">
+          <a href="/orders/confirmation/<%= order.id %>" class="btn">View Details</a>
+        </div>
+      </div>
+    <% }) %>
+  </div>
+  
+  <div class="orders-actions">
+    <a href="/products" class="btn">Continue Shopping</a>
+  </div>
+<% } %>

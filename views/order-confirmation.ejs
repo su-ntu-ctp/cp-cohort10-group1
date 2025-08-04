@@ -1,0 +1,52 @@
+<div class="order-confirmation">
+  <div class="success-message">
+    <h2>Order Confirmed!</h2>
+    <p>Thank you for your purchase. Your order has been successfully placed.</p>
+    <p>Order ID: <strong><%= order.id %></strong></p>
+    <p>Date: <%= new Date(order.date).toLocaleString() %></p>
+  </div>
+  
+  <div class="order-details">
+    <h3>Order Details</h3>
+    <div class="order-items">
+      <table>
+        <thead>
+          <tr>
+            <th>Product</th>
+            <th>Price</th>
+            <th>Quantity</th>
+            <th>Total</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% order.items.forEach(item => { %>
+            <tr>
+              <td><%= item.product.name %></td>
+              <td>$<%= item.product.price.toFixed(2) %></td>
+              <td><%= item.quantity %></td>
+              <td>$<%= item.itemTotal.toFixed(2) %></td>
+            </tr>
+          <% }) %>
+        </tbody>
+        <tfoot>
+          <tr>
+            <td colspan="3"><strong>Total</strong></td>
+            <td><strong>$<%= order.total.toFixed(2) %></strong></td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+    
+    <div class="customer-info">
+      <h3>Shipping Information</h3>
+      <p><strong>Name:</strong> <%= order.customer.name %></p>
+      <p><strong>Email:</strong> <%= order.customer.email %></p>
+      <p><strong>Address:</strong> <%= order.customer.address %></p>
+    </div>
+  </div>
+  
+  <div class="confirmation-actions">
+    <a href="/products" class="btn">Continue Shopping</a>
+    <a href="/orders" class="btn btn-primary">View All Orders</a>
+  </div>
+</div>
