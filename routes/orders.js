@@ -14,7 +14,4 @@ router.get('/confirmation/:id', orderController.orderConfirmation);
 // View orders
 router.get('/', orderController.viewOrders);
 
-// Clear orders (for demo purposes)
-router.get('/clear', orderController.clearOrders);
-
 module.exports = router;

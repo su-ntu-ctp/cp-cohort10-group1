@@ -100,7 +100,7 @@ exports.placeOrder = async (req, res) => {
   const items = await Promise.all(itemPromises);
   
   // Create order
-  const orderId = Date.now();
+  const orderId = uuid.v4();
   const order = {
     id: orderId,
     userId: userId,
@@ -133,7 +133,7 @@ exports.placeOrder = async (req, res) => {
 // Order confirmation
 exports.orderConfirmation = async (req, res) => {
   const userId = getUserId(req);
-  const orderId = parseInt(req.params.id);
+  const orderId = req.params.id;
   
   try {
     const order = await get(ORDERS_TABLE, { id: orderId });
@@ -183,25 +183,3 @@ exports.viewOrders = async (req, res) => {
   }
 };
 
-// Clear orders (for demo purposes)
-exports.clearOrders = async (req, res) => {
-  const userId = getUserId(req);
-  
-  try {
-    const orders = await getOrdersFromDB(userId);
-    
-    // Delete each order
-    for (const order of orders) {
-      await deleteItem(ORDERS_TABLE, { id: order.id });
-    }
-    
-    res.redirect('/orders');
-  } catch (error) {
-    console.error('Error clearing orders:', error);
-    res.status(500).render('layout', {
-      content: 'error',
-      message: 'Failed to clear orders.',
-      cartCount: req.session.cart ? req.session.cart.length : 0
-    });
-  }
-};
