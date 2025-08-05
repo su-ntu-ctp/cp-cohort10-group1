@@ -1,4 +1,4 @@
-// Client-side JavaScript for ShopMate
+// Client-side JavaScript for ShopBot
 
 document.addEventListener('DOMContentLoaded', function() {
   // Quantity input validation

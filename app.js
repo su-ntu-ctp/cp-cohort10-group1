@@ -89,7 +89,7 @@ app.use((req, res, next) => {
 
 // Configure session with secure cookies and resource limits
 app.use(session({
-  secret: process.env.SESSION_SECRET || 'shopmate-default-secret',
+  secret: process.env.SESSION_SECRET || 'shopbot-default-secret',
   resave: false,
   saveUninitialized: false, // Don't create sessions for unauthenticated users
   cookie: { 
@@ -101,7 +101,7 @@ app.use(session({
   // Memory store limits (use Redis in production)
   store: undefined, // Default memory store with built-in limits
   rolling: true, // Reset expiration on activity
-  name: 'shopmate.sid' // Custom session name
+  name: 'shopbot.sid' // Custom session name
 }));
 
 // Set view engine

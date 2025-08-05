@@ -18,12 +18,12 @@ class AIChat {
         </div>
         <div id="chat-window" class="chat-window">
           <div class="chat-header">
-            <h4>ShopMate Assistant</h4>
+            <h4>ShopBot Assistant</h4>
             <button id="chat-close">&times;</button>
           </div>
           <div id="chat-messages" class="chat-messages">
             <div class="bot-message">
-              Hi! I'm your ShopMate assistant. Ask me about returns, shipping, or anything else!
+              Hi! I'm your ShopBot assistant. Ask me about returns, shipping, or anything else!
             </div>
           </div>
           <div class="chat-input-container">
