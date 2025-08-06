@@ -39,3 +39,9 @@ variable "create_route53_zone" {
   type        = bool
   default     = false
 }
+
+variable "stripe_secret_key" {
+  description = "Stripe secret key"
+  type        = string
+  sensitive   = true
+}
