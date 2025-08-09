@@ -135,10 +135,10 @@ resource "aws_dynamodb_table" "orders" {
 resource "aws_dynamodb_table" "carts" {
   name           = "${var.prefix}carts"
   billing_mode   = "PAY_PER_REQUEST"
-  hash_key       = "id"
+  hash_key       = "userId"
 
   attribute {
-    name = "id"
+    name = "userId"
     type = "S"
   }
 }
@@ -227,10 +227,15 @@ resource "aws_ecs_task_definition" "app_task" {
       
       secrets = [
         {
-          name  = "STRIPE_SECRET_KEY"
+          name      = "STRIPE_SECRET_KEY"
           valueFrom = aws_secretsmanager_secret.stripe_secret.arn
+        },
+        {
+          name      = "SESSION_SECRET"
+          valueFrom = aws_secretsmanager_secret.session_secret.arn
         }
       ]
+
 
       logConfiguration = {
         logDriver = "awslogs"
@@ -320,9 +325,11 @@ resource "aws_lb_target_group" "app" {
   target_type = "ip"
 
   health_check {
-    path                = "/"
+    path                = "/health"
     healthy_threshold   = 2
     unhealthy_threshold = 2
+    timeout = 5
+    interval = 30
   }
 }
 
@@ -371,7 +378,8 @@ resource "aws_route53_record" "app" {
 
 # Secrets Manager
 resource "aws_secretsmanager_secret" "stripe_secret" {
-  name = "${var.prefix}-stripe-secret"
+  name                    = "${var.prefix}stripe-secret"
+  force_overwrite_replica_secret = true
 }
 
 resource "aws_secretsmanager_secret_version" "stripe_secret" {
@@ -384,6 +392,13 @@ resource "aws_iam_role_policy_attachment" "secrets_policy" {
   role       = aws_iam_role.ecs_task_execution_role.name
   policy_arn = "arn:aws:iam::aws:policy/SecretsManagerReadWrite"
 }
+
+# Secrets access for task role 
+resource "aws_iam_role_policy_attachment" "task_secrets_policy" {
+  role       = aws_iam_role.ecs_task_role.name
+  policy_arn = "arn:aws:iam::aws:policy/SecretsManagerReadWrite"
+}
+
 
 # ECS Service
 resource "aws_ecs_service" "app_service" {
@@ -406,4 +421,20 @@ resource "aws_ecs_service" "app_service" {
   }
 
   depends_on = [aws_lb_listener.https]
+}
+
+# Generate session secret
+resource "random_password" "session_secret" {
+  length = 32
+}
+
+# Store in Secrets Manager
+resource "aws_secretsmanager_secret" "session_secret" {
+  name = "${var.prefix}session-secret"
+  force_overwrite_replica_secret = true
+}
+
+resource "aws_secretsmanager_secret_version" "session_secret" {
+  secret_id     = aws_secretsmanager_secret.session_secret.id
+  secret_string = random_password.session_secret.result
 }

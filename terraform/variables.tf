@@ -7,8 +7,9 @@ variable "aws_region" {
 variable "prefix" {
   description = "Resource prefix"
   type        = string
-  default     = "shopbot"
+  default     = "shopbot-"
 }
+
 
 variable "environment" {
   description = "Environment name"
