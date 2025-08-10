@@ -228,10 +228,7 @@ resource "aws_ecs_task_definition" "app_task" {
       ]
       
       secrets = [
-        {
-          name      = "STRIPE_SECRET_KEY"
-          valueFrom = aws_secretsmanager_secret.stripe_secret.arn
-        },
+        
         {
           name      = "SESSION_SECRET"
           valueFrom = aws_secretsmanager_secret.session_secret.arn
