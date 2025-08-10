@@ -111,18 +111,18 @@ resource "aws_iam_role" "ecs_task_role" {
 
 # DynamoDB Tables
 resource "aws_dynamodb_table" "products" {
-  name           = "${var.prefix}products"
+  name           = "${var.prefix}-products-${var.environment}"
   billing_mode   = "PAY_PER_REQUEST"
   hash_key       = "id"
 
   attribute {
     name = "id"
-    type = "S"
+    type = "N"
   }
 }
 
 resource "aws_dynamodb_table" "orders" {
-  name           = "${var.prefix}orders"
+  name           = "${var.prefix}-orders-${var.environment}"
   billing_mode   = "PAY_PER_REQUEST"
   hash_key       = "id"
 
@@ -133,7 +133,7 @@ resource "aws_dynamodb_table" "orders" {
 }
 
 resource "aws_dynamodb_table" "carts" {
-  name           = "${var.prefix}carts"
+  name           = "${var.prefix}-carts-${var.environment}"
   billing_mode   = "PAY_PER_REQUEST"
   hash_key       = "userId"
 
@@ -159,7 +159,9 @@ resource "aws_iam_role_policy" "app_access" {
           "dynamodb:UpdateItem",
           "dynamodb:DeleteItem",
           "dynamodb:Scan",
-          "dynamodb:Query"
+          "dynamodb:Query",
+          "dynamodb:BatchReadItem",
+          "dynamodb:BatchWriteItem"
         ]
         Resource = [
           aws_dynamodb_table.products.arn,
