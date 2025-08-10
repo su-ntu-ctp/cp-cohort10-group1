@@ -7,8 +7,9 @@ variable "aws_region" {
 variable "prefix" {
   description = "Resource prefix"
   type        = string
-  default     = "shopbot"
+  default     = "shopbot-"
 }
+
 
 variable "environment" {
   description = "Environment name"
@@ -38,4 +39,10 @@ variable "create_route53_zone" {
   description = "Create Route 53 zone"
   type        = bool
   default     = false
+}
+
+variable "stripe_secret_key" {
+  description = "Stripe secret key"
+  type        = string
+  sensitive   = true
 }

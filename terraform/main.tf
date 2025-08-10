@@ -1,5 +1,3 @@
-
-
 # VPC 
 module "vpc" {
   source = "terraform-aws-modules/vpc/aws"
@@ -15,7 +13,6 @@ module "vpc" {
   enable_vpn_gateway = false
   enable_dns_support = true
   enable_dns_hostnames = true
-
 }
 
 # ALB Security Group
@@ -64,7 +61,6 @@ resource "aws_security_group" "app_sg" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 }
-
 
 # ECR repository
 resource "aws_ecr_repository" "ecr_shopbot" {
@@ -115,18 +111,18 @@ resource "aws_iam_role" "ecs_task_role" {
 
 # DynamoDB Tables
 resource "aws_dynamodb_table" "products" {
-  name           = "${var.prefix}products"
+  name           = "${var.prefix}-products-${var.environment}"
   billing_mode   = "PAY_PER_REQUEST"
   hash_key       = "id"
 
   attribute {
     name = "id"
-    type = "S"
+    type = "N"
   }
 }
 
 resource "aws_dynamodb_table" "orders" {
-  name           = "${var.prefix}orders"
+  name           = "${var.prefix}-orders-${var.environment}"
   billing_mode   = "PAY_PER_REQUEST"
   hash_key       = "id"
 
@@ -137,12 +133,12 @@ resource "aws_dynamodb_table" "orders" {
 }
 
 resource "aws_dynamodb_table" "carts" {
-  name           = "${var.prefix}carts"
+  name           = "${var.prefix}-carts-${var.environment}"
   billing_mode   = "PAY_PER_REQUEST"
-  hash_key       = "id"
+  hash_key       = "userId"
 
   attribute {
-    name = "id"
+    name = "userId"
     type = "S"
   }
 }
@@ -163,7 +159,9 @@ resource "aws_iam_role_policy" "app_access" {
           "dynamodb:UpdateItem",
           "dynamodb:DeleteItem",
           "dynamodb:Scan",
-          "dynamodb:Query"
+          "dynamodb:Query",
+          "dynamodb:BatchReadItem",
+          "dynamodb:BatchWriteItem"
         ]
         Resource = [
           aws_dynamodb_table.products.arn,
@@ -179,7 +177,6 @@ resource "aws_iam_role_policy" "app_access" {
 resource "aws_ecs_cluster" "main" {
   name = "${var.prefix}ecs"
 }
-
 
 # ECS Task Definition
 resource "aws_ecs_task_definition" "app_task" {
@@ -227,15 +224,18 @@ resource "aws_ecs_task_definition" "app_task" {
         {
           name  = "CARTS_TABLE"
           value = aws_dynamodb_table.carts.name
-        },
-        secrets = [
-        {
-          name = "SESSION_SECRET"
-          valueFrom = aws_secretsmanager_secret.session_secret.arn
-        }       
-        ]
+        }
       ]
       
+      secrets = [
+        
+        {
+          name      = "SESSION_SECRET"
+          valueFrom = aws_secretsmanager_secret.session_secret.arn
+        }
+      ]
+
+
       logConfiguration = {
         logDriver = "awslogs"
         options = {
@@ -256,12 +256,155 @@ resource "aws_cloudwatch_log_group" "app_logs" {
   retention_in_days = 7
 }
 
+# Data source for existing hosted zone
+data "aws_route53_zone" "existing" {
+  count = var.create_route53_zone ? 0 : 1
+  name  = var.route53_zone_name
+}
+
+# Create new hosted zone (conditional)
+resource "aws_route53_zone" "main" {
+  count = var.create_route53_zone ? 1 : 0
+  name  = var.route53_zone_name
+}
+
+# Local to get the correct zone_id
+locals {
+  zone_id = var.create_route53_zone ? aws_route53_zone.main[0].zone_id : data.aws_route53_zone.existing[0].zone_id
+}
+
+# ACM Certificate
+resource "aws_acm_certificate" "main" {
+  domain_name       = var.domain_name
+  validation_method = "DNS"
+
+  lifecycle {
+    create_before_destroy = true
+  }
+}
+
+# Certificate validation record
+resource "aws_route53_record" "cert_validation" {
+  for_each = {
+    for dvo in aws_acm_certificate.main.domain_validation_options : dvo.domain_name => {
+      name   = dvo.resource_record_name
+      record = dvo.resource_record_value
+      type   = dvo.resource_record_type
+    }
+  }
+
+  zone_id = local.zone_id
+  name    = each.value.name
+  type    = each.value.type
+  records = [each.value.record]
+  ttl     = 60
+}
+
+# Certificate validation
+resource "aws_acm_certificate_validation" "main" {
+  certificate_arn         = aws_acm_certificate.main.arn
+  validation_record_fqdns = [for record in aws_route53_record.cert_validation : record.fqdn]
+}
+
+# Application Load Balancer
+resource "aws_lb" "main" {
+  name               = "${var.prefix}-alb"
+  internal           = false
+  load_balancer_type = "application"
+  security_groups    = [aws_security_group.alb_sg.id]
+  subnets            = module.vpc.public_subnets
+}
+
+# ALB Target Group
+resource "aws_lb_target_group" "app" {
+  name        = "${var.prefix}-tg"
+  port        = 3000
+  protocol    = "HTTP"
+  vpc_id      = module.vpc.vpc_id
+  target_type = "ip"
+
+  health_check {
+    path                = "/health"
+    healthy_threshold   = 2
+    unhealthy_threshold = 2
+    timeout = 5
+    interval = 30
+  }
+}
+
+# ALB Listener (HTTPS)
+resource "aws_lb_listener" "https" {
+  load_balancer_arn = aws_lb.main.arn
+  port              = "443"
+  protocol          = "HTTPS"
+  ssl_policy        = "ELBSecurityPolicy-TLS-1-2-2017-01"
+  certificate_arn   = aws_acm_certificate_validation.main.certificate_arn
+
+  default_action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.app.arn
+  }
+}
+
+# ALB Listener (HTTP - redirects to HTTPS)
+resource "aws_lb_listener" "http" {
+  load_balancer_arn = aws_lb.main.arn
+  port              = "80"
+  protocol          = "HTTP"
+
+  default_action {
+    type = "redirect"
+    redirect {
+      port        = "443"
+      protocol    = "HTTPS"
+      status_code = "HTTP_301"
+    }
+  }
+}
+
+# Route53 Record for ALB
+resource "aws_route53_record" "app" {
+  zone_id = local.zone_id
+  name    = var.domain_name
+  type    = "A"
+
+  alias {
+    name                   = aws_lb.main.dns_name
+    zone_id                = aws_lb.main.zone_id
+    evaluate_target_health = true
+  }
+}
+
+# Secrets Manager
+resource "aws_secretsmanager_secret" "stripe_secret" {
+  name                    = "${var.prefix}stripe-secret"
+  force_overwrite_replica_secret = true
+}
+
+resource "aws_secretsmanager_secret_version" "stripe_secret" {
+  secret_id     = aws_secretsmanager_secret.stripe_secret.id
+  secret_string = var.stripe_secret_key
+}
+
+# Update IAM policy for secrets access
+resource "aws_iam_role_policy_attachment" "secrets_policy" {
+  role       = aws_iam_role.ecs_task_execution_role.name
+  policy_arn = "arn:aws:iam::aws:policy/SecretsManagerReadWrite"
+}
+
+# Secrets access for task role 
+resource "aws_iam_role_policy_attachment" "task_secrets_policy" {
+  role       = aws_iam_role.ecs_task_role.name
+  policy_arn = "arn:aws:iam::aws:policy/SecretsManagerReadWrite"
+}
+
+
 # ECS Service
 resource "aws_ecs_service" "app_service" {
   name            = "${var.prefix}service"
   cluster         = aws_ecs_cluster.main.id
   task_definition = aws_ecs_task_definition.app_task.arn
-  desired_count   = 1
+  desired_count   = var.app_count
   launch_type     = "FARGATE"
 
   network_configuration {
@@ -269,7 +412,28 @@ resource "aws_ecs_service" "app_service" {
     security_groups = [aws_security_group.app_sg.id]
     assign_public_ip = true
   }
+
+  load_balancer {
+    target_group_arn = aws_lb_target_group.app.arn
+    container_name   = "${var.prefix}container"
+    container_port   = 3000
+  }
+
+  depends_on = [aws_lb_listener.https]
 }
 
+# Generate session secret
+resource "random_password" "session_secret" {
+  length = 32
+}
 
+# Store in Secrets Manager
+resource "aws_secretsmanager_secret" "session_secret" {
+  name = "${var.prefix}session-secret"
+  force_overwrite_replica_secret = true
+}
 
+resource "aws_secretsmanager_secret_version" "session_secret" {
+  secret_id     = aws_secretsmanager_secret.session_secret.id
+  secret_string = random_password.session_secret.result
+}
