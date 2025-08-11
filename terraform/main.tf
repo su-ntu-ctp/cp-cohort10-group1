@@ -111,7 +111,7 @@ resource "aws_iam_role" "ecs_task_role" {
 
 # DynamoDB Tables
 resource "aws_dynamodb_table" "products" {
-  name           = "${var.prefix}-products-${var.environment}"
+  name           = "${var.prefix}products-${var.environment}"
   billing_mode   = "PAY_PER_REQUEST"
   hash_key       = "id"
 
@@ -122,7 +122,7 @@ resource "aws_dynamodb_table" "products" {
 }
 
 resource "aws_dynamodb_table" "orders" {
-  name           = "${var.prefix}-orders-${var.environment}"
+  name           = "${var.prefix}orders-${var.environment}"
   billing_mode   = "PAY_PER_REQUEST"
   hash_key       = "id"
 
@@ -133,7 +133,7 @@ resource "aws_dynamodb_table" "orders" {
 }
 
 resource "aws_dynamodb_table" "carts" {
-  name           = "${var.prefix}-carts-${var.environment}"
+  name           = "${var.prefix}carts-${var.environment}"
   billing_mode   = "PAY_PER_REQUEST"
   hash_key       = "userId"
 
@@ -375,16 +375,6 @@ resource "aws_route53_record" "app" {
   }
 }
 
-# Secrets Manager
-resource "aws_secretsmanager_secret" "stripe_secret" {
-  name                    = "${var.prefix}stripe-secret"
-  force_overwrite_replica_secret = true
-}
-
-resource "aws_secretsmanager_secret_version" "stripe_secret" {
-  secret_id     = aws_secretsmanager_secret.stripe_secret.id
-  secret_string = var.stripe_secret_key
-}
 
 # Update IAM policy for secrets access
 resource "aws_iam_role_policy_attachment" "secrets_policy" {
@@ -429,9 +419,10 @@ resource "random_password" "session_secret" {
 
 # Store in Secrets Manager
 resource "aws_secretsmanager_secret" "session_secret" {
-  name = "${var.prefix}session-secret"
+  name = "${var.prefix}session-secret-${var.environment}"
   force_overwrite_replica_secret = true
 }
+
 
 resource "aws_secretsmanager_secret_version" "session_secret" {
   secret_id     = aws_secretsmanager_secret.session_secret.id
