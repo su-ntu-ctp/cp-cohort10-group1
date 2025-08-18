@@ -1,0 +1,10 @@
+global:
+  scrape_interval: 15s
+
+scrape_configs:
+  - job_name: 'shopbot'
+    static_configs:
+      - targets: ['shopbot.sctp-sandbox.com']
+    metrics_path: '/metrics'
+    scrape_interval: 5s
+    scheme: https

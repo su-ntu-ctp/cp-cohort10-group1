@@ -66,9 +66,9 @@ router.post('/chat', async (req, res) => {
       'warranty': '1-year manufacturer warranty on all products. Extended warranties available at checkout.',
       'track': 'Track your order in the "My Orders" section or use the tracking number we emailed you.',
       'cancel': 'Orders can be cancelled within 1 hour of placement. Contact us immediately for assistance!',
-      'hello': 'Hi! I\'m your ShopBot assistant. I can help with product recommendations, comparisons, and shopping questions!',
+      'hello': 'Hi! I\'m your ShopMate assistant. I can help with product recommendations, comparisons, and shopping questions!',
       'help': 'I can help with: product recommendations, comparisons, specifications, pricing, shipping, returns, and order tracking. What do you need?',
-      'support': 'Our customer support team is here to help! For complex questions, email us at support@shopbot.com'
+      'support': 'Our customer support team is here to help! For complex questions, email us at support@shopmate.com'
     };
     
     // Check for matches
@@ -96,12 +96,12 @@ router.post('/chat', async (req, res) => {
     }
     
     // Default response for unmatched queries
-    const defaultResponse = 'I can help with product recommendations, comparisons, pricing, shipping, and returns. Try asking "best laptop for work" or "gift ideas". For detailed technical questions, email support@shopbot.com - we\'ll respond within 24 hours!';
+    const defaultResponse = 'I can help with product recommendations, comparisons, pricing, shipping, and returns. Try asking "best laptop for work" or "gift ideas". For detailed technical questions, email support@shopmate.com - we\'ll respond within 24 hours!';
     
     res.json({ response: defaultResponse });
   } catch (error) {
     console.error('AI Chat error:', error);
-    res.status(500).json({ error: 'Sorry, I encountered an error. Please email us at support@shopbot.com for assistance.' });
+    res.status(500).json({ error: 'Sorry, I encountered an error. Please email us at support@shopmate.com for assistance.' });
   }
 });
 

@@ -1,5 +1,13 @@
 const Product = require('../models/product');
 
+// Import metrics (with fallback if not available)
+let metrics;
+try {
+  metrics = require('../app').metrics;
+} catch (error) {
+  metrics = null;
+}
+
 // Get all products
 exports.getAllProducts = async (req, res) => {
   try {
@@ -7,6 +15,11 @@ exports.getAllProducts = async (req, res) => {
     
     // Fallback to empty array if products is undefined
     const productList = Array.isArray(products) ? products : [];
+    
+    // Track product listing views
+    if (metrics && metrics.productViews) {
+      metrics.productViews.inc();
+    }
     
     res.render('layout', { 
       content: 'products',
@@ -34,6 +47,12 @@ exports.getProductDetails = async (req, res) => {
         cartCount: req.session.cart ? req.session.cart.length : 0
       });
     }
+    
+    // Track individual product views
+    if (metrics && metrics.productViews) {
+      metrics.productViews.inc();
+    }
+    
     res.render('layout', { 
       content: 'product-details',
       product,

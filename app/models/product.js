@@ -45,6 +45,10 @@ const sampleProducts = [
   }
 ];
 
+// Track initialization status
+let productsInitialized = false;
+let initializationPromise = null;
+
 // Initialize products in DynamoDB if they don't exist
 const initializeProducts = async () => {
   try {
@@ -57,19 +61,30 @@ const initializeProducts = async () => {
       
       await batchWrite(PRODUCTS_TABLE, sampleProducts);
       
+      // Wait a bit for eventual consistency
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
       console.log('Products initialized successfully');
     }
+    
+    productsInitialized = true;
   } catch (error) {
     console.error('Error initializing products:', error);
+    productsInitialized = true; // Set to true to prevent hanging
   }
 };
 
-// Call initialization (will run when the app starts)
-initializeProducts();
+// Call initialization and store promise
+initializationPromise = initializeProducts();
 
 // Get all products
 exports.getAllProducts = async () => {
   try {
+    // Wait for initialization to complete
+    if (!productsInitialized && initializationPromise) {
+      await initializationPromise;
+    }
+    
     const products = await scan(PRODUCTS_TABLE);
     return products.length > 0 ? products : sampleProducts;
   } catch (error) {
@@ -81,6 +96,11 @@ exports.getAllProducts = async () => {
 // Get product by ID
 exports.getProductById = async (id) => {
   try {
+    // Wait for initialization to complete
+    if (!productsInitialized && initializationPromise) {
+      await initializationPromise;
+    }
+    
     const product = await get(PRODUCTS_TABLE, { id: parseInt(id) });
     return product || sampleProducts.find(p => p.id === parseInt(id));
   } catch (error) {

@@ -2,6 +2,14 @@ const Product = require('../models/product');
 const { get, put, CARTS_TABLE } = require('../utils/dynamodb');
 const uuid = require('uuid');
 
+// Import metrics (with fallback if not available)
+let metrics;
+try {
+  metrics = require('../app').metrics;
+} catch (error) {
+  metrics = null;
+}
+
 // Helper function to get user ID (in a real app, this would come from authentication)
 const getUserId = (req) => {
   if (!req.session.userId) {
@@ -126,6 +134,21 @@ exports.addToCart = async (req, res) => {
       cartItems.push({
         productId,
         quantity
+      });
+    }
+    
+    // Track cart item additions
+    if (metrics && metrics.cartItemsAdded) {
+      metrics.cartItemsAdded.inc();
+    }
+    
+    // Track cart items by product type
+    if (metrics && metrics.cartItemsByProduct) {
+      const category = product.category || 'electronics';
+      metrics.cartItemsByProduct.inc({
+        product_id: productId.toString(),
+        product_name: product.name,
+        category: category
       });
     }
     
