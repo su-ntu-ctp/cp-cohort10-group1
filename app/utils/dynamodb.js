@@ -15,9 +15,9 @@ const client = new DynamoDBClient({ region });
 const dynamoDB = DynamoDBDocumentClient.from(client);
 
 // Table names from environment variables
-const PRODUCTS_TABLE = process.env.PRODUCTS_TABLE || 'shopbot-products-dev';
-const ORDERS_TABLE = process.env.ORDERS_TABLE || 'shopbot-orders-dev';
-const CARTS_TABLE = process.env.CARTS_TABLE || 'shopbot-carts-dev';
+const PRODUCTS_TABLE = process.env.PRODUCTS_TABLE || 'shopmate-products-dev';
+const ORDERS_TABLE = process.env.ORDERS_TABLE || 'shopmate-orders-dev';
+const CARTS_TABLE = process.env.CARTS_TABLE || 'shopmate-carts-dev';
 
 // Helper functions for common operations
 const scan = async (params) => {
@@ -42,10 +42,11 @@ const query = async (params) => {
   return response.Items || [];
 };
 
-const get = async (tableName, key) => {
+const get = async (tableName, key, consistentRead = false) => {
   const command = new GetCommand({
     TableName: tableName,
-    Key: key
+    Key: key,
+    ConsistentRead: consistentRead
   });
   const response = await dynamoDB.send(command);
   return response.Item;
