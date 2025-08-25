@@ -275,7 +275,16 @@ resource "aws_ecs_task_definition" "app_task" {
 
   container_definitions = jsonencode([
     {
-      name  = "${var.prefix}container"
+      name  = "${var.prefix}container-${var.environment# Check if autoscaling is actually configured
+      aws application-autoscaling describe-scalable-targets \
+          --service-namespace ecs \
+          --resource-ids "service/shopbot-ecs/shopbot-service-dev"
+
+      # Check scaling activities
+      aws application-autoscaling describe-scaling-activities \
+          --service-namespace ecs \
+          --resource-id "service/shopbot-ecs/shopbot-service-dev"
+}"
       image = "${aws_ecr_repository.ecr_shopbot.repository_url}:latest"
       
       portMappings = [
