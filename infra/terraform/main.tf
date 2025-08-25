@@ -242,6 +242,12 @@ resource "aws_secretsmanager_secret_version" "session_secret" {
   secret_string = random_password.session_secret.result
 }
 
+# Secrets access for task role 
+resource "aws_iam_role_policy_attachment" "task_secrets_policy" {
+  role       = aws_iam_role.ecs_task_role.name
+  policy_arn = "arn:aws:iam::aws:policy/SecretsManagerReadWrite"
+}
+
 # ============================================================================
 # ECS CLUSTER & SERVICES
 # ============================================================================
@@ -332,7 +338,7 @@ resource "aws_ecs_task_definition" "app_task" {
 }
 
 # ECS Service for main application
-resource "aws_ecs_service" "app" {
+resource "aws_ecs_service" "app_service" {
   name            = "${var.prefix}service-${var.environment}"
   cluster         = aws_ecs_cluster.main.id
   task_definition = aws_ecs_task_definition.app_task.arn
@@ -342,12 +348,12 @@ resource "aws_ecs_service" "app" {
   network_configuration {
     subnets          = module.vpc.private_subnets
     security_groups  = [aws_security_group.app_sg.id]
-    assign_public_ip = false
+    assign_public_ip = true
   }
 
   load_balancer {
     target_group_arn = aws_lb_target_group.app.arn
-    container_name   = "${var.prefix}container"
+    container_name   = "${var.prefix}container-${var.environment}"
     container_port   = 3000
   }
 
@@ -478,6 +484,57 @@ resource "aws_route53_record" "app" {
     name                   = aws_lb.main.dns_name
     zone_id                = aws_lb.main.zone_id
     evaluate_target_health = true
+  }
+}
+
+######################################################################################
+
+#Auto Scaling
+
+#######################################################################################
+
+# ECS Auto Scaling Target- Auto Scaling based on CPU utilization-tell AWS what resource to scale
+resource "aws_appautoscaling_target" "ecs_target" {
+  max_capacity       = 5
+  min_capacity       = 1
+  resource_id        = "service/${aws_ecs_cluster.main.name}/${aws_ecs_service.app_service.name}"  # Which ECS service to scale
+  scalable_dimension = "ecs:service:DesiredCount"  # Scale container count
+  service_namespace  = "ecs"    # ECS service type
+}
+
+# CPU-based scaling (primary)
+resource "aws_appautoscaling_policy" "cpu_scaling" {
+  name               = "${var.prefix}cpu-scaling-${var.environment}"
+  policy_type        = "TargetTrackingScaling"
+  resource_id        = aws_appautoscaling_target.ecs_target.resource_id
+  scalable_dimension = aws_appautoscaling_target.ecs_target.scalable_dimension
+  service_namespace  = aws_appautoscaling_target.ecs_target.service_namespace
+
+  target_tracking_scaling_policy_configuration {
+    predefined_metric_specification {
+      predefined_metric_type = "ECSServiceAverageCPUUtilization"
+    }
+    target_value       = 70.0
+    scale_out_cooldown = 300  # 5 min cooldown after scale up
+    scale_in_cooldown  = 300  # 5 min cooldown after scale down
+  }
+}
+
+# Memory-based scaling (secondary)
+resource "aws_appautoscaling_policy" "memory_scaling" {
+  name               = "${var.prefix}memory-scaling-${var.environment}"
+  policy_type        = "TargetTrackingScaling"
+  resource_id        = aws_appautoscaling_target.ecs_target.resource_id
+  scalable_dimension = aws_appautoscaling_target.ecs_target.scalable_dimension
+  service_namespace  = aws_appautoscaling_target.ecs_target.service_namespace
+
+  target_tracking_scaling_policy_configuration {
+    predefined_metric_specification {
+      predefined_metric_type = "ECSServiceAverageMemoryUtilization"
+    }
+    target_value       = 70.0  # Same target to avoid conflicts
+    scale_out_cooldown = 300
+    scale_in_cooldown  = 300
   }
 }
 
