@@ -38,4 +38,4 @@ Thumbs.db
 dist/
 build/
 .next/
-out/
+out/scripts/

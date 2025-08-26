@@ -53,3 +53,8 @@ variable "max_capacity" {
   description = "Max scaling capacity"
   type        = number
 }
+
+variable "min_capacity" {
+  description = "Max scaling capacity"
+  type        = number
+}

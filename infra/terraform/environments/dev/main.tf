@@ -8,4 +8,5 @@ module "shopbot" {
   task_cpu      = "256"
   task_memory   = "512"
   max_capacity  = 3
+  min_capacity  = 1
 }
