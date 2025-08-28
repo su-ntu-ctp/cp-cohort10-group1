@@ -4,7 +4,7 @@ global:
 scrape_configs:
   - job_name: 'shopbot'
     static_configs:
-      - targets: ['shopbot.sctp-sandbox.com']
+      - targets: ['dev-shopbot.sctp-sandbox.com']  
     metrics_path: '/metrics'
     scrape_interval: 5s
     scheme: https

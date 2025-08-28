@@ -14,20 +14,18 @@ variable "prefix" {
 variable "environment" {
   description = "Environment name"
   type        = string
-  default     = "dev"
-}
+  }
   
-variable "app_count" {
-  description = "Number of docker containers to run"
-  type        = number
-  default     = 1 
-}
+# variable "app_count" {
+#   description = "Number of docker containers to run"
+#   type        = number
+  
+# }
 
 variable "domain_name" {  
   description = "Domain name"
   type        = string
-  default     = "shopbot.sctp-sandbox.com"
-}
+  }
 
 variable "route53_zone_name" {
   description = "Route 53 zone name"
@@ -41,4 +39,22 @@ variable "create_route53_zone" {
   default     = false
 }
 
+variable "task_cpu" {
+  description = "Task CPU"
+  type        = string
+}
 
+variable "task_memory" {
+  description = "Task memory"
+  type = string
+}
+
+variable "max_capacity" {
+  description = "Max scaling capacity"
+  type        = number
+}
+
+variable "min_capacity" {
+  description = "Max scaling capacity"
+  type        = number
+}
