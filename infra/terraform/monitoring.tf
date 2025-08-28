@@ -78,6 +78,8 @@ resource "aws_ecs_task_definition" "prometheus" {
           protocol      = "tcp"
         }
       ]
+      
+    ]
 
       command = [
         "--config.file=/etc/prometheus/prometheus.yml",

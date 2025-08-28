@@ -2,10 +2,6 @@
 # AUTO SCALING CONFIGURATION
 # ============================================================================
 
-# ============================================================================
-# AUTO SCALING CONFIGURATION
-# ============================================================================
-
 # ECS Auto Scaling Target
 resource "aws_appautoscaling_target" "ecs_target" {
   max_capacity       = var.max_capacity
