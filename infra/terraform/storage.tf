@@ -2,10 +2,9 @@
 # CONTAINER REGISTRY
 # ============================================================================
 
-# ECR repository for Docker images
-resource "aws_ecr_repository" "ecr_shopbot" {
-  name         = "${var.prefix}ecr"
-  force_delete = true
+# Referenced to shared ECR repository
+data "aws_ecr_repository" "shopbot" {
+  name = "shopbot"
 }
 
 # ============================================================================

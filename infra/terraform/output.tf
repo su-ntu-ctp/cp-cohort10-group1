@@ -1,17 +1,11 @@
 # ============================================================================
 # INFRASTRUCTURE OUTPUTS
 # ============================================================================
+# # In shared/outputs.tf
+# output "ecr_repository_url" {
+#   value = aws_ecr_repository.shopbot.repository_url
+# }
 
-# Container Registry Outputs
-output "ecr_repository_url" {
-  description = "Full ECR repository URL for pushing Docker images"
-  value       = aws_ecr_repository.ecr_shopbot.repository_url
-}
-
-output "ecr_registry_url" {
-  description = "ECR registry URL for Docker login authentication"
-  value       = split("/", aws_ecr_repository.ecr_shopbot.repository_url)[0]
-}
 
 # Application Access URLs
 output "app_url" {

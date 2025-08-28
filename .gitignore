@@ -38,4 +38,7 @@ Thumbs.db
 dist/
 build/
 .next/
-out/scripts/
+scripts/
+*.tfplan
+testing/
+infra/terraform/README.md

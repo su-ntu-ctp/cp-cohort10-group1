@@ -16,11 +16,11 @@ variable "environment" {
   type        = string
   }
   
-variable "app_count" {
-  description = "Number of docker containers to run"
-  type        = number
+# variable "app_count" {
+#   description = "Number of docker containers to run"
+#   type        = number
   
-}
+# }
 
 variable "domain_name" {  
   description = "Domain name"

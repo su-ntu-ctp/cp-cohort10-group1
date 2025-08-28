@@ -10,7 +10,7 @@ resource "aws_ecs_cluster" "main" {
 # ECS Task Definition
 
 resource "aws_ecs_task_definition" "app_task" {
-  family                   = "${var.prefix}app-${var.environment}"
+  family                   = "${var.prefix}td-${var.environment}"
   network_mode             = "awsvpc"
   requires_compatibilities = ["FARGATE"]
   cpu                      = "${var.task_cpu}"
@@ -21,8 +21,8 @@ resource "aws_ecs_task_definition" "app_task" {
   container_definitions = jsonencode([
     {
       name  = "${var.prefix}container-${var.environment}"
-      image = "${aws_ecr_repository.ecr_shopbot.repository_url}:latest"
-      
+      image = "${data.aws_ecr_repository.shopbot.repository_url}:latest"
+      essential = true
       portMappings = [
         {
           containerPort = 3000
@@ -71,13 +71,13 @@ resource "aws_ecs_task_definition" "app_task" {
       logConfiguration = {
         logDriver = "awslogs"
         options = {
-          "awslogs-group"         = "/ecs/${var.prefix}app-${var.environment}"
+          "awslogs-group"         = aws_cloudwatch_log_group.app_logs.name
           "awslogs-region"        = var.aws_region
-          "awslogs-stream-prefix" = "${var.prefix}"
+          "awslogs-stream-prefix" = "${var.prefix}-app-${var.environment}"
         }
       }
       
-      essential = true
+      
     }
   ])
 }
@@ -85,10 +85,10 @@ resource "aws_ecs_task_definition" "app_task" {
 
 # ECS Service for main application
 resource "aws_ecs_service" "app_service" {
-  name            = "${var.prefix}service-${var.environment}"
+  name            = "${var.prefix}app-${var.environment}"
   cluster         = aws_ecs_cluster.main.id
   task_definition = aws_ecs_task_definition.app_task.arn
-  desired_count   = var.app_count
+  desired_count   = var.min_capacity
   launch_type     = "FARGATE"
 
   network_configuration {

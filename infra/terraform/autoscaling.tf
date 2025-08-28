@@ -2,23 +2,20 @@
 # AUTO SCALING CONFIGURATION
 # ============================================================================
 
+# ============================================================================
+# AUTO SCALING CONFIGURATION
+# ============================================================================
+
 # ECS Auto Scaling Target
-# Defines the scalable resource (ECS service) and its capacity limits
 resource "aws_appautoscaling_target" "ecs_target" {
   max_capacity       = var.max_capacity
   min_capacity       = var.min_capacity
   resource_id        = "service/${aws_ecs_cluster.main.name}/${aws_ecs_service.app_service.name}"
-  scalable_dimension = "ecs:service:DesiredCount"  # Scale the number of running tasks
+  scalable_dimension = "ecs:service:DesiredCount"
   service_namespace  = "ecs"
-
-  tags = {
-    Name        = "${var.prefix}autoscaling-target-${var.environment}"
-    Environment = var.environment
-  }
 }
 
-# CPU-based Auto Scaling Policy
-# Scales out when average CPU utilization exceeds 70%
+# CPU-based Auto Scaling Policy - Optimized for linear scaling
 resource "aws_appautoscaling_policy" "cpu_scaling" {
   name               = "${var.prefix}cpu-scaling-${var.environment}"
   policy_type        = "TargetTrackingScaling"
@@ -30,11 +27,12 @@ resource "aws_appautoscaling_policy" "cpu_scaling" {
     predefined_metric_specification {
       predefined_metric_type = "ECSServiceAverageCPUUtilization"
     }
-    target_value       = 70.0  # Target CPU utilization percentage
-    scale_out_cooldown = 300   # Wait 5 minutes before scaling out again
-    scale_in_cooldown  = 300   # Wait 5 minutes before scaling in again
+    target_value       = 60.0  # Lower target for faster scaling
+    scale_out_cooldown = 120   # 2 minutes instead of 5
+    scale_in_cooldown  = 180   # 3 minutes instead of 5
   }
 }
+
 
 # Memory-based Auto Scaling Policy
 # Provides additional scaling trigger based on memory utilization

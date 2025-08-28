@@ -39,7 +39,7 @@ resource "aws_lb_listener_rule" "prometheus" {
 
 # Prometheus Security Group
 resource "aws_security_group" "prometheus" {
-  name_prefix = "${var.prefix}prometheus-${var.environment}-"
+  name_prefix = "${var.prefix}prometheus-sg-${var.environment}-"
   vpc_id      = module.vpc.vpc_id
 
   ingress {
@@ -59,7 +59,7 @@ resource "aws_security_group" "prometheus" {
 
 # Prometheus Task Definition
 resource "aws_ecs_task_definition" "prometheus" {
-  family                   = "${var.prefix}prometheus-${var.environment}"
+  family                   = "${var.prefix}prometheus-td-${var.environment}"
   network_mode             = "awsvpc"
   requires_compatibilities = ["FARGATE"]
   cpu                      = "256"
@@ -69,7 +69,7 @@ resource "aws_ecs_task_definition" "prometheus" {
   container_definitions = jsonencode([
     {
       name      = "${var.prefix}prometheus-${var.environment}"
-      image     = "${aws_ecr_repository.ecr_shopbot.repository_url}:prometheus"
+      image     = "${data.aws_ecr_repository.shopbot.repository_url}:prometheus"
       essential = true
 
       portMappings = [
@@ -163,7 +163,7 @@ resource "aws_lb_listener_rule" "grafana" {
 
 # Grafana Security Group
 resource "aws_security_group" "grafana" {
-  name_prefix = "${var.prefix}grafana-"
+  name_prefix = "${var.prefix}grafana-sg-"
   vpc_id      = module.vpc.vpc_id
 
   ingress {
@@ -183,7 +183,7 @@ resource "aws_security_group" "grafana" {
 
 # Grafana Task Definition
 resource "aws_ecs_task_definition" "grafana" {
-  family                   = "${var.prefix}grafana-${var.environment}"
+  family                   = "${var.prefix}grafana-td-${var.environment}"
   network_mode             = "awsvpc"
   requires_compatibilities = ["FARGATE"]
   cpu                      = "256"

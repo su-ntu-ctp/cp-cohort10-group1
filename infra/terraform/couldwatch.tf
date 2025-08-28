@@ -5,15 +5,10 @@
 # CloudWatch Log Group for main application logs
 # Stores application logs with 7-day retention for cost optimization
 resource "aws_cloudwatch_log_group" "app_logs" {
-  name              = "/ecs/${var.prefix}app-${var.environment}"
+  name              = "/ecs/${var.prefix}td-${var.environment}"
   retention_in_days = 7
 
-  tags = {
-    Name        = "${var.prefix}app-logs-${var.environment}"
-    Environment = var.environment
-    Service     = "ShopBot Application"
   }
-}
 
 # CloudWatch Log Group for Grafana monitoring service
 # Longer retention for monitoring service logs
@@ -21,11 +16,6 @@ resource "aws_cloudwatch_log_group" "grafana" {
   name              = "/ecs/${var.prefix}grafana-${var.environment}"
   retention_in_days = 30
 
-  tags = {
-    Name        = "${var.prefix}grafana-logs-${var.environment}"
-    Environment = var.environment
-    Service     = "Grafana Monitoring"
-  }
 }
 
 # CloudWatch Log Group for Prometheus monitoring service
@@ -34,11 +24,6 @@ resource "aws_cloudwatch_log_group" "prometheus" {
   name              = "/ecs/${var.prefix}prometheus-${var.environment}"
   retention_in_days = 30
 
-  tags = {
-    Name        = "${var.prefix}prometheus-logs-${var.environment}"
-    Environment = var.environment
-    Service     = "Prometheus Monitoring"
-  }
 }
 
 
@@ -60,7 +45,7 @@ resource "aws_cloudwatch_dashboard" "shopbot" {
         height = 6
         properties = {
           metrics = [
-            ["AWS/ECS", "CPUUtilization", "ServiceName", "${var.prefix}-service-${var.environment}", "ClusterName", aws_ecs_cluster.main.name],
+            ["AWS/ECS", "CPUUtilization", "ServiceName", "${var.prefix}app-${var.environment}", "ClusterName", aws_ecs_cluster.main.name],
             [".", "MemoryUtilization", ".", ".", ".", "."]
           ]
           period = 300

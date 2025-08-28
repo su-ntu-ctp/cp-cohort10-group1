@@ -2,7 +2,7 @@
 set -e
 
 AWS_REGION="ap-southeast-1"
-ECR_REPO="shopbot-ecr"
+ECR_REPO="shopbot"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
