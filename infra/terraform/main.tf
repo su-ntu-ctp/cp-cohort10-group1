@@ -1,5 +1,5 @@
 terraform {
-  required_version = ">= 1.3.0"
+  required_version = ">= 1.0"
 
   required_providers {
     aws = {
@@ -15,14 +15,14 @@ terraform {
 
 provider "aws" {
   region = var.aws_region
+
   default_tags {
     tags = {
-      Project     = "Shopbot"
+      Project     = "ShopBot"
       Environment = var.environment
       ManagedBy   = "Terraform"
-      }
+      Owner       = "Group1"
+      Application = "E-commerce"
     }
   }
-
-
-
+}

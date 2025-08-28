@@ -1,10 +1,30 @@
 # ============================================================================
+# CLOUDWATCH LOG GROUPS FOR MONITORING
+# ============================================================================
+
+# CloudWatch Log Group for Grafana monitoring service
+# Longer retention for monitoring service logs
+resource "aws_cloudwatch_log_group" "grafana" {
+  name              = "/ecs/${var.prefix}-grafana-${var.environment}"
+  retention_in_days = 30
+
+}
+
+# CloudWatch Log Group for Prometheus monitoring service
+# Longer retention for monitoring service logs
+resource "aws_cloudwatch_log_group" "prometheus" {
+  name              = "/ecs/${var.prefix}-prometheus-${var.environment}"
+  retention_in_days = 30
+
+}
+
+# ============================================================================
 # PROMETHEUS MONITORING
 # ============================================================================
 
 # Prometheus Target Group
 resource "aws_lb_target_group" "prometheus" {
-  name        = "${var.prefix}prometheus-tg-${var.environment}"
+  name        = "${var.prefix}-prometheus-tg-${var.environment}"
   port        = 9090
   protocol    = "HTTP"
   vpc_id      = module.vpc.vpc_id
@@ -22,7 +42,7 @@ resource "aws_lb_target_group" "prometheus" {
 
 # Prometheus ALB Listener Rule
 resource "aws_lb_listener_rule" "prometheus" {
-  listener_arn = aws_lb_listener.https.arn
+  listener_arn = aws_lb_listener.shopbot.arn
   priority     = 200
 
   action {
@@ -39,14 +59,14 @@ resource "aws_lb_listener_rule" "prometheus" {
 
 # Prometheus Security Group
 resource "aws_security_group" "prometheus" {
-  name_prefix = "${var.prefix}prometheus-sg-${var.environment}-"
+  name        = "${var.prefix}-prometheus-sg-${var.environment}"
   vpc_id      = module.vpc.vpc_id
 
   ingress {
     from_port       = 9090
     to_port         = 9090
     protocol        = "tcp"
-    security_groups = [aws_security_group.alb_sg.id]
+    security_groups = [aws_security_group.alb.id]
   }
 
   egress {
@@ -59,7 +79,7 @@ resource "aws_security_group" "prometheus" {
 
 # Prometheus Task Definition
 resource "aws_ecs_task_definition" "prometheus" {
-  family                   = "${var.prefix}prometheus-td-${var.environment}"
+  family                   = "${var.prefix}-prometheus-td-${var.environment}"
   network_mode             = "awsvpc"
   requires_compatibilities = ["FARGATE"]
   cpu                      = "256"
@@ -68,7 +88,7 @@ resource "aws_ecs_task_definition" "prometheus" {
 
   container_definitions = jsonencode([
     {
-      name      = "${var.prefix}prometheus-${var.environment}"
+      name      = "${var.prefix}-prometheus-${var.environment}"
       image     = "${data.aws_ecr_repository.shopbot.repository_url}:prometheus"
       essential = true
 
@@ -79,8 +99,6 @@ resource "aws_ecs_task_definition" "prometheus" {
         }
       ]
       
-    ]
-
       command = [
         "--config.file=/etc/prometheus/prometheus.yml",
         "--storage.tsdb.path=/prometheus",
@@ -95,7 +113,7 @@ resource "aws_ecs_task_definition" "prometheus" {
         options = {
           "awslogs-group"         = aws_cloudwatch_log_group.prometheus.name
           "awslogs-region"        = var.aws_region
-          "awslogs-stream-prefix" = "${var.prefix}prometheus-${var.environment}"
+          "awslogs-stream-prefix" = "${var.prefix}-prometheus-${var.environment}"
         }
       }
     }
@@ -104,8 +122,8 @@ resource "aws_ecs_task_definition" "prometheus" {
 
 # Prometheus ECS Service
 resource "aws_ecs_service" "prometheus" {
-  name            = "${var.prefix}prometheus-${var.environment}"
-  cluster         = aws_ecs_cluster.main.id
+  name            = "${var.prefix}-prometheus-${var.environment}"
+  cluster         = aws_ecs_cluster.shopbot.id
   task_definition = aws_ecs_task_definition.prometheus.arn
   desired_count   = 1
   launch_type     = "FARGATE"
@@ -118,7 +136,7 @@ resource "aws_ecs_service" "prometheus" {
 
   load_balancer {
     target_group_arn = aws_lb_target_group.prometheus.arn
-    container_name   = "${var.prefix}prometheus-${var.environment}"
+    container_name   = "${var.prefix}-prometheus-${var.environment}"
     container_port   = 9090
   }
 }
@@ -130,7 +148,7 @@ resource "aws_ecs_service" "prometheus" {
 
 # Grafana Target Group
 resource "aws_lb_target_group" "grafana" {
-  name        = "${var.prefix}grafana-tg-${var.environment}"
+  name        = "${var.prefix}-grafana-tg-${var.environment}"
   port        = 3000
   protocol    = "HTTP"
   vpc_id      = module.vpc.vpc_id
@@ -148,7 +166,7 @@ resource "aws_lb_target_group" "grafana" {
 
 # Grafana ALB Listener Rule
 resource "aws_lb_listener_rule" "grafana" {
-  listener_arn = aws_lb_listener.https.arn
+  listener_arn = aws_lb_listener.shopbot.arn
   priority     = 100
 
   action {
@@ -165,14 +183,14 @@ resource "aws_lb_listener_rule" "grafana" {
 
 # Grafana Security Group
 resource "aws_security_group" "grafana" {
-  name_prefix = "${var.prefix}grafana-sg-"
+  name        = "${var.prefix}-grafana-sg-${var.environment}"
   vpc_id      = module.vpc.vpc_id
 
   ingress {
     from_port       = 3000
     to_port         = 3000
     protocol        = "tcp"
-    security_groups = [aws_security_group.alb_sg.id]
+    security_groups = [aws_security_group.alb.id]
   }
 
   egress {
@@ -185,7 +203,7 @@ resource "aws_security_group" "grafana" {
 
 # Grafana Task Definition
 resource "aws_ecs_task_definition" "grafana" {
-  family                   = "${var.prefix}grafana-td-${var.environment}"
+  family                   = "${var.prefix}-grafana-td-${var.environment}"
   network_mode             = "awsvpc"
   requires_compatibilities = ["FARGATE"]
   cpu                      = "256"
@@ -194,7 +212,7 @@ resource "aws_ecs_task_definition" "grafana" {
 
   container_definitions = jsonencode([
     {
-      name      = "${var.prefix}grafana-${var.environment}"
+      name      = "${var.prefix}-grafana-${var.environment}"
       image     = "grafana/grafana:latest"
       essential = true
 
@@ -229,7 +247,7 @@ resource "aws_ecs_task_definition" "grafana" {
         options = {
           "awslogs-group"         = aws_cloudwatch_log_group.grafana.name
           "awslogs-region"        = var.aws_region
-          "awslogs-stream-prefix" = "${var.prefix}grafana-${var.environment}"
+          "awslogs-stream-prefix" = "${var.prefix}-grafana-${var.environment}"
         }
       }
     }
@@ -238,8 +256,8 @@ resource "aws_ecs_task_definition" "grafana" {
 
 # Grafana ECS Service
 resource "aws_ecs_service" "grafana" {
-  name            = "${var.prefix}grafana-${var.environment}"
-  cluster         = aws_ecs_cluster.main.id
+  name            = "${var.prefix}-grafana-${var.environment}"
+  cluster         = aws_ecs_cluster.shopbot.id
   task_definition = aws_ecs_task_definition.grafana.arn
   desired_count   = 1
   launch_type     = "FARGATE"
@@ -252,7 +270,7 @@ resource "aws_ecs_service" "grafana" {
 
   load_balancer {
     target_group_arn = aws_lb_target_group.grafana.arn
-    container_name   = "${var.prefix}grafana-${var.environment}"
+    container_name   = "${var.prefix}-grafana-${var.environment}"
     container_port   = 3000
   }
 }

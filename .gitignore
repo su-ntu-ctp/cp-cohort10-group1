@@ -45,3 +45,4 @@ infra/terraform/README.md
 scripts/
 testing/
 infra/terraform/README.md
+deploy.sh

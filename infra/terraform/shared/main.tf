@@ -12,6 +12,7 @@ terraform {
     bucket = "sctp-ce10-tfstate"
     key    = "shopbot/shared/terraform.tfstate"
     region = "ap-southeast-1"
+    encrypt = true
   }
 }
 
