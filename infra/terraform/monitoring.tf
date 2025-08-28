@@ -225,10 +225,6 @@ resource "aws_ecs_task_definition" "grafana" {
 
       environment = [
         {
-          name  = "GF_SECURITY_ADMIN_PASSWORD"
-          value = "admin123"
-        },
-        {
           name  = "GF_SERVER_ROOT_URL"
           value = "https://${var.domain_name}/grafana"
         },
@@ -239,6 +235,13 @@ resource "aws_ecs_task_definition" "grafana" {
         {
           name  = "PROMETHEUS_URL"
           value = "https://${var.domain_name}/prometheus"
+        }
+      ]
+
+      secrets = [
+        {
+          name      = "GF_SECURITY_ADMIN_PASSWORD"
+          valueFrom = aws_secretsmanager_secret.grafana_password.arn
         }
       ]
 
