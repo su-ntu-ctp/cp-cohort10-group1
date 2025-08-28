@@ -4,16 +4,16 @@
 
 # ECS Auto Scaling Target
 resource "aws_appautoscaling_target" "ecs_target" {
-  max_capacity       = var.max_capacity
-  min_capacity       = var.min_capacity
-  resource_id        = "service/${aws_ecs_cluster.main.name}/${aws_ecs_service.app_service.name}"
+  max_capacity       = var.app_count_max
+  min_capacity       = var.app_count_min
+  resource_id        = "service/${aws_ecs_cluster.shopbot.name}/${aws_ecs_service.shopbot.name}"
   scalable_dimension = "ecs:service:DesiredCount"
   service_namespace  = "ecs"
 }
 
 # CPU-based Auto Scaling Policy - Optimized for linear scaling
 resource "aws_appautoscaling_policy" "cpu_scaling" {
-  name               = "${var.prefix}cpu-scaling-${var.environment}"
+  name               = "${var.prefix}-cpu-scaling-${var.environment}"
   policy_type        = "TargetTrackingScaling"
   resource_id        = aws_appautoscaling_target.ecs_target.resource_id
   scalable_dimension = aws_appautoscaling_target.ecs_target.scalable_dimension
@@ -33,7 +33,7 @@ resource "aws_appautoscaling_policy" "cpu_scaling" {
 # Memory-based Auto Scaling Policy
 # Provides additional scaling trigger based on memory utilization
 resource "aws_appautoscaling_policy" "memory_scaling" {
-  name               = "${var.prefix}memory-scaling-${var.environment}"
+  name               = "${var.prefix}-memory-scaling-${var.environment}"
   policy_type        = "TargetTrackingScaling"
   resource_id        = aws_appautoscaling_target.ecs_target.resource_id
   scalable_dimension = aws_appautoscaling_target.ecs_target.scalable_dimension

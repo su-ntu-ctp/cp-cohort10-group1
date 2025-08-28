@@ -13,7 +13,7 @@ data "aws_ecr_repository" "shopbot" {
 
 # Products table
 resource "aws_dynamodb_table" "products" {
-  name         = "${var.prefix}products-${var.environment}"
+  name         = "${var.prefix}-products-${var.environment}"
   billing_mode = "PAY_PER_REQUEST"
   hash_key     = "id"
 
@@ -25,7 +25,7 @@ resource "aws_dynamodb_table" "products" {
 
 # Orders table
 resource "aws_dynamodb_table" "orders" {
-  name         = "${var.prefix}orders-${var.environment}"
+  name         = "${var.prefix}-orders-${var.environment}"
   billing_mode = "PAY_PER_REQUEST"
   hash_key     = "id"
 
@@ -37,7 +37,7 @@ resource "aws_dynamodb_table" "orders" {
 
 # Shopping carts table
 resource "aws_dynamodb_table" "carts" {
-  name         = "${var.prefix}carts-${var.environment}"
+  name         = "${var.prefix}-carts-${var.environment}"
   billing_mode = "PAY_PER_REQUEST"
   hash_key     = "userId"
 
@@ -49,7 +49,7 @@ resource "aws_dynamodb_table" "carts" {
 
 # User sessions table with TTL
 resource "aws_dynamodb_table" "sessions" {
-  name         = "${var.prefix}sessions-${var.environment}"
+  name         = "${var.prefix}-sessions-${var.environment}"
   billing_mode = "PAY_PER_REQUEST"
   hash_key     = "id"
 

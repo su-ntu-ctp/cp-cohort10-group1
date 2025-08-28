@@ -6,7 +6,7 @@
 module "vpc" {
   source = "terraform-aws-modules/vpc/aws"
   
-  name = "shopbot-vpc"
+  name = "${var.prefix}-vpc-${var.environment}"
   cidr = "10.0.0.0/16"
   
   azs             = ["${var.aws_region}a", "${var.aws_region}b"]
@@ -24,8 +24,8 @@ module "vpc" {
 # ============================================================================
 
 # ALB Security Group - allows HTTP/HTTPS from internet
-resource "aws_security_group" "alb_sg" {
-  name_prefix = "${var.prefix}alb-${var.environment}"
+resource "aws_security_group" "alb" {
+  name        = "${var.prefix}-alb-sg-${var.environment}"
   vpc_id      = module.vpc.vpc_id
 
   ingress {
@@ -51,15 +51,15 @@ resource "aws_security_group" "alb_sg" {
 }
 
 # App Security Group - allows traffic from ALB only
-resource "aws_security_group" "app_sg" {
-  name_prefix = "${var.prefix}app-${var.environment}"
+resource "aws_security_group" "ecs_tasks" {
+  name        = "${var.prefix}-ecs-tasks-sg-${var.environment}"
   vpc_id      = module.vpc.vpc_id
 
   ingress {
     from_port       = 3000
     to_port         = 3000
     protocol        = "tcp"
-    security_groups = [aws_security_group.alb_sg.id]
+    security_groups = [aws_security_group.alb.id]
   }
 
   egress {
@@ -75,17 +75,17 @@ resource "aws_security_group" "app_sg" {
 # ============================================================================
 
 # Application Load Balancer
-resource "aws_lb" "main" {
-  name               = "${var.prefix}alb-${var.environment}"
+resource "aws_lb" "shopbot" {
+  name               = "${var.prefix}-alb-${var.environment}"
   internal           = false
   load_balancer_type = "application"
-  security_groups    = [aws_security_group.alb_sg.id]
+  security_groups    = [aws_security_group.alb.id]
   subnets            = module.vpc.public_subnets
 }
 
 # Target Group for ECS tasks
-resource "aws_lb_target_group" "app" {
-  name        = "${var.prefix}tg-${var.environment}"
+resource "aws_lb_target_group" "shopbot" {
+  name        = "${var.prefix}-tg-${var.environment}"
   port        = 3000
   protocol    = "HTTP"
   vpc_id      = module.vpc.vpc_id
@@ -101,22 +101,22 @@ resource "aws_lb_target_group" "app" {
 }
 
 # HTTPS Listener
-resource "aws_lb_listener" "https" {
-  load_balancer_arn = aws_lb.main.arn
+resource "aws_lb_listener" "shopbot" {
+  load_balancer_arn = aws_lb.shopbot.arn
   port              = "443"
   protocol          = "HTTPS"
   ssl_policy        = "ELBSecurityPolicy-TLS-1-2-2017-01"
-  certificate_arn   = aws_acm_certificate_validation.main.certificate_arn
+  certificate_arn   = aws_acm_certificate_validation.shopbot.certificate_arn
 
   default_action {
     type             = "forward"
-    target_group_arn = aws_lb_target_group.app.arn
+    target_group_arn = aws_lb_target_group.shopbot.arn
   }
 }
 
 # HTTP Listener (redirects to HTTPS)
-resource "aws_lb_listener" "http" {
-  load_balancer_arn = aws_lb.main.arn
+resource "aws_lb_listener" "shopbot_http" {
+  load_balancer_arn = aws_lb.shopbot.arn
   port              = "80"
   protocol          = "HTTP"
 
