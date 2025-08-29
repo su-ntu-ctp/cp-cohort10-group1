@@ -28,8 +28,33 @@ Login: `admin` / `<password_from_secrets>`
 
 Add data sources and copy their UIDs:
 
-1. **CloudWatch**: Configuration → Data Sources → Add CloudWatch → Set region → Save → Copy UID from URL
-2. **Prometheus**: Configuration → Data Sources → Add Prometheus → Set URL → Save → Copy UID from URL
+#### CloudWatch Data Source Setup:
+1. Go to **Configuration** → **Data Sources** → **Add data source**
+2. Select **CloudWatch**
+3. **Important Settings:**
+   - **Authentication Provider**: `AWS SDK Default`
+   - **Default Region**: `ap-southeast-1`
+   - **Assume Role ARN**: Leave empty (uses ECS task role)
+   - **External ID**: Leave empty
+   - **Endpoint**: Leave empty (uses default)
+   - **Custom Metrics Namespaces**: Leave empty
+4. Click **Save & Test** (should show green checkmark)
+5. **Copy the UID** from the browser URL (e.g., `cloudwatch-uid-abc123`)
+
+#### Prometheus Data Source Setup:
+1. Go to **Configuration** → **Data Sources** → **Add data source**
+2. Select **Prometheus**
+3. **Important Settings:**
+   - **URL**: `https://dev-shopbot.sctp-sandbox.com/prometheus` (replace with your environment)
+   - **Access**: `Server (default)`
+   - **Basic Auth**: Disabled
+   - **Skip TLS Verify**: Disabled
+   - **HTTP Method**: `GET`
+   - **Scrape interval**: `15s`
+4. Click **Save & Test** (should show green checkmark)
+5. **Copy the UID** from the browser URL (e.g., `prometheus-uid-def456`)
+
+**Note**: The CloudWatch data source uses the ECS task role for authentication, so no additional credentials are needed.
 
 ### 2. Generate Dashboard
 
