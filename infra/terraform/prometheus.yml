@@ -9,9 +9,9 @@ scrape_configs:
     scrape_interval: 5s
     scheme: https
 
-  - job_name: "shopbot-uat"
+  - job_name: "shopbot-staging"
     static_configs:
-      - targets: ["uat-shopbot.sctp-sandbox.com"]
+      - targets: ["staging-shopbot.sctp-sandbox.com"]
     metrics_path: "/metrics"
     scrape_interval: 5s
     scheme: https

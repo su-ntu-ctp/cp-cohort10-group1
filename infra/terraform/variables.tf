@@ -12,12 +12,12 @@ variable "prefix" {
 
 
 variable "environment" {
-  description = "The deployment environment (dev, uat, prod). This affects resource naming and scaling parameters. Must be explicitly specified."
+  description = "The deployment environment (dev, staging, prod). This affects resource naming and scaling parameters. Must be explicitly specified."
   type        = string
 
   validation {
-    condition     = contains(["dev", "uat", "prod"], var.environment)
-    error_message = "Environment must be one of: dev, uat, prod."
+    condition     = contains(["dev", "staging", "prod"], var.environment)
+    error_message = "Environment must be one of: dev, staging, prod."
   }
 }
   

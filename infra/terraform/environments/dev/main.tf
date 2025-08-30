@@ -1,3 +1,6 @@
+terraform {
+  backend "s3" {}
+}
 module "shopbot" {
   source = "../.."
   
