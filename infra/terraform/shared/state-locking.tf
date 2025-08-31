@@ -19,17 +19,3 @@ resource "aws_dynamodb_table" "terraform_locks" {
     purpose="state locking for all environmnets"
   }
 }
-
-# Store backend configuration in Secrets Manager
-resource "aws_secretsmanager_secret" "terraform_backend" {
-  name = "shopbot/terraform/backend-config"
-}
-
-resource "aws_secretsmanager_secret_version" "terraform_backend" {
-  secret_id = aws_secretsmanager_secret.terraform_backend.id
-  secret_string = jsonencode({
-    bucket         = "sctp-ce10-tfstate"
-    region         = "ap-southeast-1"
-    dynamodb_table = aws_dynamodb_table.terraform_locks.name
-  })
-}
