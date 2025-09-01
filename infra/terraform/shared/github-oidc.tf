@@ -52,7 +52,15 @@ resource "aws_iam_role_policy" "github_actions_ecr" {
           "dynamodb:*",
           "route53:*",
           "acm:*",
-          "cloudwatch:*"           
+          "cloudwatch:*" , 
+          "s3:*",
+          "autoscaling:*",
+          "ssm:GetParameters",
+          "ssm:PutParameter",
+          "ssm:ListTagsForResource",
+          "ssm:AddTagsToResource",
+          "ssm:UpdateItem",
+                            
         ]
         Resource = "*"
       }
