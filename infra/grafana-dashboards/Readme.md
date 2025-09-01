@@ -13,14 +13,14 @@ Simple setup for shopbot autoscaling dashboards across environments.
 
 Access Grafana for your environment:
 
-- **Dev**: https://shopbot.dev.sctp-sandbox.com/grafana
-- **UAT**: https://shopbot.uat.sctp-sandbox.com/grafana
+- **Dev**: https://dev-shopbot.sctp-sandbox.com/grafana
+- **UAT**: https://staging-shopbot.uat.sctp-sandbox.com/grafana
 - **Prod**: https://shopbot.sctp-sandbox.com/grafana
 
 **Get admin password from AWS Secrets Manager:**
 
 ```bash
-# Replace {env} with dev/uat/prod
+# Replace {env} with dev/staging/prod
 aws secretsmanager get-secret-value --secret-id "shopbot/{env}/grafana-admin-password" --query SecretString --output text --region ap-southeast-1
 ```
 
