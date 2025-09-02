@@ -156,33 +156,3 @@ resource "aws_iam_role_policy_attachment" "task_role_cloudwatch" {
   role       = aws_iam_role.ecs_task_role.name
   policy_arn = aws_iam_policy.cloudwatch_read.arn
 }
-
-# ============================================================================
-# ECS EXECUTE COMMAND PERMISSIONS
-# ============================================================================
-
-resource "aws_iam_role_policy_attachment" "ecs_task_ssm" {
-  role       = aws_iam_role.ecs_task_role.name
-  policy_arn = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
-}
-
-resource "aws_iam_role_policy" "ecs_exec_policy" {
-  name = "${var.prefix}-ecs-exec-policy-${var.environment}"
-  role = aws_iam_role.ecs_task_role.id
-
-  policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Effect = "Allow"
-        Action = [
-          "ssmmessages:CreateControlChannel",
-          "ssmmessages:CreateDataChannel",
-          "ssmmessages:OpenControlChannel", 
-          "ssmmessages:OpenDataChannel"
-        ]
-        Resource = "*"
-      }
-    ]
-  })
-}

@@ -22,30 +22,6 @@ resource "aws_ecs_cluster" "shopbot" {
 # ECS TASK DEFINITION - 3 ENVIRONMENT MAPPING
 # ============================================================================
 
-locals {
-  # Map environments to image targets and tags
-  image_config = {
-    dev = {
-      target = "development"
-      tag    = "dev-latest"
-      shell_access = true
-    }
-    staging = {
-      target = "staging"
-      tag    = "staging-latest"
-      shell_access = true  # Limited shell via debug image
-    }
-    prod = {
-      target = "production"
-      tag    = "prod-latest"
-      shell_access = false  # No shell access
-    }
-  }
-  
-  current_config = local.image_config[var.environment]
-  image_uri = "${data.aws_ecr_repository.shopbot.repository_url}:${local.current_config.tag}"
-}
-
 resource "aws_ecs_task_definition" "shopbot" {
   family                   = "${var.prefix}-td-${var.environment}"
   network_mode             = "awsvpc"
@@ -58,7 +34,7 @@ resource "aws_ecs_task_definition" "shopbot" {
   container_definitions = jsonencode([
     {
       name  = "${var.prefix}-container-${var.environment}"
-      image = local.image_uri
+      image = "${data.aws_ecr_repository.shopbot.repository_url}:${var.image_tag}"
       essential = true
       
       portMappings = [
@@ -113,26 +89,8 @@ resource "aws_ecs_task_definition" "shopbot" {
           "awslogs-region"        = var.aws_region
           "awslogs-stream-prefix" = "${var.prefix}-logs-${var.environment}"
         }
-      }
+      }           
       
-      # Health check only for dev (has curl)
-      healthCheck = var.environment == "dev" ? {
-        command     = ["CMD-SHELL", "curl -f http://localhost:3000/health || exit 1"]
-        interval    = 30
-        timeout     = 5
-        retries     = 3
-        startPeriod = 60
-      } : null
-      
-      # Security configurations
-      readonlyRootFilesystem = var.environment == "prod"
-      
-      linuxParameters = {
-        capabilities = {
-          drop = ["ALL"]
-          
-        }
-      }
     }
   ])
 }
@@ -144,9 +102,7 @@ resource "aws_ecs_service" "shopbot" {
   desired_count   = var.app_count_min
   launch_type     = "FARGATE"
   
-  # Enable execute command based on shell access
-  enable_execute_command = local.current_config.shell_access
-
+  
   network_configuration {
     subnets          = module.vpc.private_subnets
     security_groups  = [aws_security_group.ecs_tasks.id]
@@ -161,9 +117,4 @@ resource "aws_ecs_service" "shopbot" {
 
   depends_on = [aws_lb_listener.shopbot]
   
-  tags = {
-    Environment = var.environment
-    ImageTarget = local.current_config.target
-    ShellAccess = local.current_config.shell_access ? "enabled" : "disabled"
-  }
 }
