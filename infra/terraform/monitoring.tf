@@ -89,7 +89,7 @@ resource "aws_ecs_task_definition" "prometheus" {
   container_definitions = jsonencode([
     {
       name      = "${var.prefix}-prometheus-${var.environment}"
-      image     = "${data.aws_ecr_repository.shopbot.repository_url}:prometheus"
+      image     = "${data.aws_ecr_repository.shopbot.repository_url}:prometheus-latest"
       essential = true
 
       portMappings = [
