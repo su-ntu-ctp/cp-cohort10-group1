@@ -45,4 +45,17 @@ infra/terraform/README.md
 scripts/
 testing/
 infra/terraform/README.md
-deploy.sh
+/cp-cohort10-group1/infra/terraform/shared/tfplan/
+/cp-cohort10-group1/infra/terraform/environments/staging/tfplan/
+infra/terraform/shared/tfplan
+/home/rbsara/capstone/cp-cohort10-group1/scripts
+# Backend configs
+backend.hcl
+backend-*.hcl
+*.auto.tfvars
+scripts/deploy-shared.sh
+scripts/deploy-env.sh 
+scripts/deploy-all.sh
+infra/terraform/environments/prod/tfplan/
+infra/terraform/environments/staging/tfplan/
+infra/terraform/environments/dev/tfplan/
