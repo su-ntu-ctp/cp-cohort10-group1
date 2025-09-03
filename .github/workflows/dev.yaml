@@ -1,0 +1,269 @@
+# No GitHub environment protection (direct deployment)
+# Uses dev-latest image with debug capabilities
+# Comprehensive validation and testing
+# Triggered by: PR merge to dev branch
+# Promotion flow: This is the entry point - creates images for stage/prod
+# Backend config: Fetched securely from Parameter Store
+
+name: Deploy to Development
+
+on:
+  pull_request:
+    branches: [ dev ]
+    types: [ closed ]
+  push:
+    branches: [ dev ]
+
+env:
+  AWS_REGION: ap-southeast-1
+  ECR_REPOSITORY: shopbot
+  ENVIRONMENT: dev
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_GITHUB_ACTIONS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Get backend configurations from Parameter Store
+        run: |
+          echo "🔄 Fetching secure backend configurations..."
+          aws ssm get-parameter \
+            --name "/terraform/backend/shopbot" \
+            --with-decryption \
+            --query "Parameter.Value" \
+            --output text > infra/terraform/backend.hcl
+
+          aws ssm get-parameter \
+            --name "/terraform/backend/shared" \
+            --with-decryption \
+            --query "Parameter.Value" \
+            --output text > infra/terraform/shared/backend.hcl
+
+          echo "✅ Backend configurations retrieved securely"
+
+      - name: Validate dev environment
+        run: |
+          echo "Validating dev environment..."
+          if [[ "${{ env.ENVIRONMENT }}" != "dev" ]]; then
+            echo "❌ Expected dev environment, got ${{ env.ENVIRONMENT }}"
+            exit 1
+          fi
+          if [[ ! -f "infra/terraform/terraform.tfvars.dev" ]]; then
+            echo "❌ Missing terraform.tfvars.dev file"
+            exit 1
+          fi
+          aws sts get-caller-identity
+          echo "✅ Dev environment validation passed"
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.11.4
+
+      - name: Terraform Format Check (Main)
+        working-directory: infra/terraform
+        run: terraform fmt -check
+
+      - name: Terraform Format Check (Shared)
+        working-directory: infra/terraform/shared
+        run: terraform fmt -check
+
+      - name: Terraform Init (Main)
+        working-directory: infra/terraform
+        run: terraform init -reconfigure -backend-config=backend.hcl
+
+      - name: Terraform Init (Shared)
+        working-directory: infra/terraform/shared
+        run: terraform init -reconfigure -backend-config=backend.hcl
+
+      - name: Terraform Validate (Main)
+        working-directory: infra/terraform
+        run: terraform validate
+
+      - name: Terraform Validate (Shared)
+        working-directory: infra/terraform/shared
+        run: terraform validate
+
+      - name: Terraform Security Scan
+        uses: aquasecurity/tfsec-action@v1.0.3
+        with:
+          working_directory: infra/terraform
+          soft_fail: true
+          additional_args: --minimum-severity HIGH
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: app/package-lock.json
+
+      - name: Install dependencies
+        working-directory: app
+        run: npm ci
+
+      - name: Node.js Security Audit
+        working-directory: app
+        run: |
+          npm audit --audit-level=high || echo "⚠️ High severity vulnerabilities found - review required"
+
+      - name: Terraform Plan
+        working-directory: infra/terraform
+        run: |
+          terraform workspace select dev || terraform workspace new dev
+          terraform plan -var-file="terraform.tfvars.dev"
+
+  deploy:
+    needs: validate
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_GITHUB_ACTIONS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Get backend configurations from Parameter Store
+        run: |
+          echo "🔄 Fetching secure backend configurations..."
+          aws ssm get-parameter \
+            --name "/terraform/backend/shopbot" \
+            --with-decryption \
+            --query "Parameter.Value" \
+            --output text > infra/terraform/backend.hcl
+
+          aws ssm get-parameter \
+            --name "/terraform/backend/shared" \
+            --with-decryption \
+            --query "Parameter.Value" \
+            --output text > infra/terraform/shared/backend.hcl
+
+          echo "✅ Backend configurations retrieved securely"
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.11.4
+
+      - name: Deploy shared infrastructure first
+        working-directory: infra/terraform/shared
+        run: |
+          terraform init -reconfigure -backend-config=backend.hcl
+          terraform workspace select dev || terraform workspace new dev
+          terraform apply -var-file="terraform.tfvars.dev" -auto-approve
+
+      - name: Deploy dev infrastructure
+        working-directory: infra/terraform
+        run: |
+          terraform init -reconfigure -backend-config=backend.hcl
+          terraform workspace select dev || terraform workspace new dev
+          terraform apply -var-file="terraform.tfvars.dev" -auto-approve
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build and push development image (with shell access)
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+        run: |
+          docker build -f app/Dockerfile.dev -t $ECR_REGISTRY/$ECR_REPOSITORY:dev-latest app/
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:dev-latest
+
+      - name: Build and push staging image (distroless with debug)
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+        run: |
+          docker build -f app/Dockerfile.staging -t $ECR_REGISTRY/$ECR_REPOSITORY:staging-latest app/
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:staging-latest
+
+      - name: Build and push production image (pure distroless, no debug)
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+        run: |
+          docker build -f app/Dockerfile.prod -t $ECR_REGISTRY/$ECR_REPOSITORY:prod-latest app/
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:prod-latest
+
+      - name: Container Security Scan
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+        run: |
+          docker run --rm -v /var/run/docker.sock:/var/run/docker.sock \
+            aquasec/trivy image --severity HIGH,CRITICAL \
+            --exit-code 1 \
+            $ECR_REGISTRY/$ECR_REPOSITORY:prod-latest || echo "⚠️ Container vulnerabilities found - review required"
+
+      - name: Build and push Prometheus image
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+        run: |
+          docker build -f infra/Dockerfile.prometheus -t $ECR_REGISTRY/$ECR_REPOSITORY:prometheus-latest infra/
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:prometheus-latest
+
+      - name: Prometheus Container Security Scan
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+        run: |
+          docker run --rm -v /var/run/docker.sock:/var/run/docker.sock \
+            aquasec/trivy image --severity HIGH,CRITICAL \
+            --exit-code 1 \
+            $ECR_REGISTRY/$ECR_REPOSITORY:prometheus-latest || echo "⚠️ Prometheus container vulnerabilities found - review required"
+
+      - name: Update ECS service with dev image
+        working-directory: infra/terraform
+        run: |
+          terraform workspace select dev
+          terraform apply -var-file="terraform.tfvars.dev" -auto-approve
+          echo "✅ Dev deployed using dev-latest image (source: ${{ github.sha }})"
+          echo "✅ Secure prod-latest image ready for promotion"
+
+      - name: Force ECS service updates
+        run: |
+          aws ecs update-service \
+            --cluster $CLUSTER_NAME \
+            --service $MAIN_SERVICE \
+            --force-new-deployment \
+            --region $AWS_REGION
+
+          # Update Prometheus service if it exists
+          if aws ecs describe-services --cluster $CLUSTER_NAME --services $PROMETHEUS_SERVICE --region $AWS_REGION >/dev/null 2>&1; then
+            aws ecs update-service \
+              --cluster $CLUSTER_NAME \
+              --service $PROMETHEUS_SERVICE \
+              --force-new-deployment \
+              --region $AWS_REGION
+          fi
+
+          # Update Grafana service if it exists
+          if aws ecs describe-services --cluster $CLUSTER_NAME --services $GRAFANA_SERVICE --region $AWS_REGION >/dev/null 2>&1; then
+            aws ecs update-service \
+              --cluster $CLUSTER_NAME \
+              --service $GRAFANA_SERVICE \
+              --force-new-deployment \
+              --region $AWS_REGION
+          fi
+
+      - name: Get deployment URLs
+        working-directory: infra/terraform
+        run: |
+          terraform workspace select dev
+          terraform output -raw application_url
+          terraform output -raw prometheus_url
+          terraform output -raw grafana_service_name
