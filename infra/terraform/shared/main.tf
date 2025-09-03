@@ -1,34 +1,34 @@
 #ECR Repository- Shared accross all the environments
 resource "aws_ecr_repository" "shopbot" {
-  name         = "shopbot"
+  name                 = "shopbot"
   image_tag_mutability = "MUTABLE"
-  
+
 }
 
 #Backend tfstate and provier config
 
 terraform {
-  
-  backend "s3" { }
+
+  backend "s3" {}
 }
 
 #AWS Provider Configuration with Shared tags
 
 provider "aws" {
   region = "ap-southeast-1"
-default_tags {
-  tags = {
-    Project = "Shopbot"
-    Environment = "Shared"
-    ManagedBy=  "Terraform"
-    Owner ="Group1"
-    Application = "E-commerce"
+  default_tags {
+    tags = {
+      Project     = "Shopbot"
+      Environment = "Shared"
+      ManagedBy   = "Terraform"
+      Owner       = "Group1"
+      Application = "E-commerce"
+    }
+
   }
-  
-}
 }
 
-    
+
 
 # ECR Lifecycle Policy- This helps control ECR storage costs by automatically cleaning up old images.
 resource "aws_ecr_lifecycle_policy" "ecr_policy" {
@@ -72,9 +72,9 @@ resource "aws_ecr_lifecycle_policy" "ecr_policy" {
 
 # DynamoDB table for state locking - shared across all environments
 resource "aws_dynamodb_table" "terraform_locks" {
-  name           = "shopbot-terraform-locks"
-  billing_mode   = "PAY_PER_REQUEST"
-  hash_key       = "LockID"
+  name         = "shopbot-terraform-locks"
+  billing_mode = "PAY_PER_REQUEST"
+  hash_key     = "LockID"
 
   attribute {
     name = "LockID"
@@ -82,8 +82,8 @@ resource "aws_dynamodb_table" "terraform_locks" {
   }
 
   tags = {
-    Name = "Terraform State Lock Table"
+    Name        = "Terraform State Lock Table"
     Environment = "shared"
-    purpose="state locking for all environmnets"
+    purpose     = "state locking for all environmnets"
   }
 }

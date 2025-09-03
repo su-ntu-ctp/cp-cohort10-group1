@@ -20,7 +20,7 @@ variable "environment" {
     error_message = "Environment must be one of: dev, staging, prod."
   }
 }
-  
+
 variable "domain_name" {
   description = "Fully qualified domain name for the application (e.g., shopbot.example.com). SSL certificate will be issued for this domain."
   type        = string

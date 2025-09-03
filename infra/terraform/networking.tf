@@ -5,14 +5,14 @@
 # VPC with public and private subnets
 module "vpc" {
   source = "terraform-aws-modules/vpc/aws"
-  
+
   name = "${var.prefix}-vpc-${var.environment}"
   cidr = "10.0.0.0/16"
-  
+
   azs             = ["${var.aws_region}a", "${var.aws_region}b"]
   public_subnets  = ["10.0.1.0/24", "10.0.2.0/24"]
   private_subnets = ["10.0.101.0/24", "10.0.102.0/24"]
-  
+
   enable_nat_gateway   = true
   enable_vpn_gateway   = false
   enable_dns_support   = true
@@ -25,8 +25,8 @@ module "vpc" {
 
 # ALB Security Group - allows HTTP/HTTPS from internet
 resource "aws_security_group" "alb" {
-  name        = "${var.prefix}-alb-sg-${var.environment}"
-  vpc_id      = module.vpc.vpc_id
+  name   = "${var.prefix}-alb-sg-${var.environment}"
+  vpc_id = module.vpc.vpc_id
 
   ingress {
     from_port   = 80
@@ -52,8 +52,8 @@ resource "aws_security_group" "alb" {
 
 # App Security Group - allows traffic from ALB only
 resource "aws_security_group" "ecs_tasks" {
-  name        = "${var.prefix}-ecs-tasks-sg-${var.environment}"
-  vpc_id      = module.vpc.vpc_id
+  name   = "${var.prefix}-ecs-tasks-sg-${var.environment}"
+  vpc_id = module.vpc.vpc_id
 
   ingress {
     from_port       = 3000

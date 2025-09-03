@@ -23,9 +23,9 @@ resource "aws_appautoscaling_policy" "cpu_scaling" {
     predefined_metric_specification {
       predefined_metric_type = "ECSServiceAverageCPUUtilization"
     }
-    target_value       = 60.0  # Lower target for faster scaling
-    scale_out_cooldown = 120   # 2 minutes instead of 5
-    scale_in_cooldown  = 180   # 3 minutes instead of 5
+    target_value       = 60.0 # Lower target for faster scaling
+    scale_out_cooldown = 120  # 2 minutes instead of 5
+    scale_in_cooldown  = 180  # 3 minutes instead of 5
   }
 }
 
@@ -43,8 +43,8 @@ resource "aws_appautoscaling_policy" "memory_scaling" {
     predefined_metric_specification {
       predefined_metric_type = "ECSServiceAverageMemoryUtilization"
     }
-    target_value       = 70.0  # Target memory utilization percentage
-    scale_out_cooldown = 300   # Wait 5 minutes before scaling out again
-    scale_in_cooldown  = 300   # Wait 5 minutes before scaling in again
+    target_value       = 70.0 # Target memory utilization percentage
+    scale_out_cooldown = 300  # Wait 5 minutes before scaling out again
+    scale_in_cooldown  = 300  # Wait 5 minutes before scaling in again
   }
 }

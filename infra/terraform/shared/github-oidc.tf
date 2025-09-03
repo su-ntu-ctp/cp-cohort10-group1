@@ -2,13 +2,13 @@
 # GitHub OIDC Provider
 data "aws_iam_openid_connect_provider" "github" {
   url = "https://token.actions.githubusercontent.com"
-  
+
 }
 
 # IAM Role for GitHub Actions
 resource "aws_iam_role" "github_actions" {
   name = "shopbot-github-actions-role"
-  
+
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
@@ -35,7 +35,7 @@ resource "aws_iam_role" "github_actions" {
 resource "aws_iam_role_policy" "github_actions_ecr" {
   name = "shopbot-github-actions-ecr-policy"
   role = aws_iam_role.github_actions.id
-  
+
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
@@ -52,7 +52,7 @@ resource "aws_iam_role_policy" "github_actions_ecr" {
           "dynamodb:*",
           "route53:*",
           "acm:*",
-          "cloudwatch:*" , 
+          "cloudwatch:*",
           "s3:*",
           "autoscaling:*",
           "ssm:GetParameter",
@@ -60,7 +60,7 @@ resource "aws_iam_role_policy" "github_actions_ecr" {
           "ssm:ListTagsForResource",
           "ssm:AddTagsToResource",
           "ssm:UpdateItem",
-                            
+
         ]
         Resource = "*"
       }
