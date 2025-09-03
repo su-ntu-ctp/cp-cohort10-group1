@@ -59,8 +59,8 @@ resource "aws_lb_listener_rule" "prometheus" {
 
 # Prometheus Security Group
 resource "aws_security_group" "prometheus" {
-  name        = "${var.prefix}-prometheus-sg-${var.environment}"
-  vpc_id      = module.vpc.vpc_id
+  name   = "${var.prefix}-prometheus-sg-${var.environment}"
+  vpc_id = module.vpc.vpc_id
 
   ingress {
     from_port       = 9090
@@ -98,7 +98,7 @@ resource "aws_ecs_task_definition" "prometheus" {
           protocol      = "tcp"
         }
       ]
-      
+
       command = [
         "--config.file=/etc/prometheus/prometheus.yml",
         "--storage.tsdb.path=/prometheus",
@@ -183,8 +183,8 @@ resource "aws_lb_listener_rule" "grafana" {
 
 # Grafana Security Group
 resource "aws_security_group" "grafana" {
-  name        = "${var.prefix}-grafana-sg-${var.environment}"
-  vpc_id      = module.vpc.vpc_id
+  name   = "${var.prefix}-grafana-sg-${var.environment}"
+  vpc_id = module.vpc.vpc_id
 
   ingress {
     from_port       = 3000
@@ -209,7 +209,7 @@ resource "aws_ecs_task_definition" "grafana" {
   cpu                      = "256"
   memory                   = "512"
   execution_role_arn       = aws_iam_role.ecs_task_execution_role.arn
-  task_role_arn           = aws_iam_role.ecs_task_role.arn
+  task_role_arn            = aws_iam_role.ecs_task_role.arn
 
   container_definitions = jsonencode([
     {

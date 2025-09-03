@@ -87,7 +87,7 @@ resource "aws_cloudwatch_dashboard" "shopbot" {
               }
             ]
           }
-        yAxis = {
+          yAxis = {
             left = {
               min = 0
               max = 100

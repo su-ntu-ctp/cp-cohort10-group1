@@ -29,21 +29,21 @@ resource "aws_ecs_task_definition" "shopbot" {
   cpu                      = var.task_cpu
   memory                   = var.task_memory
   execution_role_arn       = aws_iam_role.ecs_task_execution_role.arn
-  task_role_arn           = aws_iam_role.ecs_task_role.arn
+  task_role_arn            = aws_iam_role.ecs_task_role.arn
 
   container_definitions = jsonencode([
     {
-      name  = "${var.prefix}-container-${var.environment}"
-      image = "${data.aws_ecr_repository.shopbot.repository_url}:${var.image_tag}"
+      name      = "${var.prefix}-container-${var.environment}"
+      image     = "${data.aws_ecr_repository.shopbot.repository_url}:${var.image_tag}"
       essential = true
-      
+
       portMappings = [
         {
           containerPort = 3000
           protocol      = "tcp"
         }
       ]
-      
+
       environment = [
         {
           name  = "NODE_ENV"
@@ -74,7 +74,7 @@ resource "aws_ecs_task_definition" "shopbot" {
           value = aws_dynamodb_table.sessions.name
         }
       ]
-      
+
       secrets = [
         {
           name      = "SESSION_SECRET"
@@ -89,8 +89,8 @@ resource "aws_ecs_task_definition" "shopbot" {
           "awslogs-region"        = var.aws_region
           "awslogs-stream-prefix" = "${var.prefix}-logs-${var.environment}"
         }
-      }           
-      
+      }
+
     }
   ])
 }
@@ -101,8 +101,8 @@ resource "aws_ecs_service" "shopbot" {
   task_definition = aws_ecs_task_definition.shopbot.arn
   desired_count   = var.app_count_min
   launch_type     = "FARGATE"
-  
-  
+
+
   network_configuration {
     subnets          = module.vpc.private_subnets
     security_groups  = [aws_security_group.ecs_tasks.id]
@@ -116,5 +116,5 @@ resource "aws_ecs_service" "shopbot" {
   }
 
   depends_on = [aws_lb_listener.shopbot]
-  
+
 }

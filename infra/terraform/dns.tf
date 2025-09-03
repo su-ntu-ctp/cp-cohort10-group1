@@ -39,13 +39,13 @@ resource "aws_route53_record" "cert_validation" {
     }
   }
 
-  
+
   allow_overwrite = true
   name            = each.value.name
-  type    = each.value.type
-  records = [each.value.record]
-  ttl     = 60
-  zone_id = local.zone_id
+  type            = each.value.type
+  records         = [each.value.record]
+  ttl             = 60
+  zone_id         = local.zone_id
 }
 
 # Certificate validation
