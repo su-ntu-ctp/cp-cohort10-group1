@@ -5,6 +5,6 @@ task_cpu        = "1024"
 task_memory     = "2048"
 app_count_max   = 10
 app_count_min   = 3
-image_tag       = "latest"
+image_tag       = "prod-latest"
 route53_zone_name ="sctp-sandbox.com"
 create_route53_zone=false

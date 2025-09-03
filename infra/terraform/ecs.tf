@@ -18,14 +18,16 @@ resource "aws_ecs_cluster" "shopbot" {
   name = "${var.prefix}-ecs-${var.environment}"
 }
 
-# ECS Task Definition
+# ============================================================================
+# ECS TASK DEFINITION - 3 ENVIRONMENT MAPPING
+# ============================================================================
 
 resource "aws_ecs_task_definition" "shopbot" {
   family                   = "${var.prefix}-td-${var.environment}"
   network_mode             = "awsvpc"
   requires_compatibilities = ["FARGATE"]
-  cpu                      = "${var.task_cpu}"
-  memory                   = "${var.task_memory}"
+  cpu                      = var.task_cpu
+  memory                   = var.task_memory
   execution_role_arn       = aws_iam_role.ecs_task_execution_role.arn
   task_role_arn           = aws_iam_role.ecs_task_role.arn
 
@@ -34,6 +36,7 @@ resource "aws_ecs_task_definition" "shopbot" {
       name  = "${var.prefix}-container-${var.environment}"
       image = "${data.aws_ecr_repository.shopbot.repository_url}:${var.image_tag}"
       essential = true
+      
       portMappings = [
         {
           containerPort = 3000
@@ -86,22 +89,20 @@ resource "aws_ecs_task_definition" "shopbot" {
           "awslogs-region"        = var.aws_region
           "awslogs-stream-prefix" = "${var.prefix}-logs-${var.environment}"
         }
-      }
-      
+      }           
       
     }
   ])
 }
 
-
-# ECS Service for main application
 resource "aws_ecs_service" "shopbot" {
   name            = "${var.prefix}-service-${var.environment}"
   cluster         = aws_ecs_cluster.shopbot.id
   task_definition = aws_ecs_task_definition.shopbot.arn
   desired_count   = var.app_count_min
   launch_type     = "FARGATE"
-
+  
+  
   network_configuration {
     subnets          = module.vpc.private_subnets
     security_groups  = [aws_security_group.ecs_tasks.id]
@@ -115,4 +116,5 @@ resource "aws_ecs_service" "shopbot" {
   }
 
   depends_on = [aws_lb_listener.shopbot]
+  
 }

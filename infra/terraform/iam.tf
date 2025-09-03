@@ -156,4 +156,3 @@ resource "aws_iam_role_policy_attachment" "task_role_cloudwatch" {
   role       = aws_iam_role.ecs_task_role.name
   policy_arn = aws_iam_policy.cloudwatch_read.arn
 }
-
