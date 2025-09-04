@@ -92,12 +92,13 @@ jobs:
         working-directory: infra/terraform/shared
         run: terraform validate
 
-      - name: Terraform Security Scan
-        uses: aquasecurity/tfsec-action@v1.0.3
+      - name: Infrastructure Security Scan with Checkov
+        uses: bridgecrewio/checkov-action@master
         with:
-          working_directory: infra/terraform
+          directory: infra/terraform
+          framework: terraform
           soft_fail: true
-          additional_args: --minimum-severity HIGH
+          quiet: true
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
