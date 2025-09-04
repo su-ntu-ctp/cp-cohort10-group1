@@ -178,10 +178,9 @@ jobs:
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
 
-      - name: Clear Docker cache and update Trivy DB
+      - name: Clear Docker cache
         run: |
           docker system prune -af
-          docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy image --download-db-only
 
       - name: Build development image (with shell access)
         env:
