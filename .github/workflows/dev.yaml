@@ -208,40 +208,36 @@ jobs:
           docker build --no-cache -f infra/Dockerfile.prometheus -t $ECR_REGISTRY/$ECR_REPOSITORY:prometheus-latest infra/
 
       - name: Container Security Scan - Dev Image
+        uses: snyk/actions/docker@master
         env:
-          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-        run: |
-          docker run --rm -v /var/run/docker.sock:/var/run/docker.sock \
-            aquasec/trivy image --severity HIGH,CRITICAL \
-            --exit-code 1 \
-            $ECR_REGISTRY/$ECR_REPOSITORY:dev-latest
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        with:
+          image: ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:dev-latest
+          args: --severity-threshold=high
 
       - name: Container Security Scan - Staging Image
+        uses: snyk/actions/docker@master
         env:
-          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-        run: |
-          docker run --rm -v /var/run/docker.sock:/var/run/docker.sock \
-            aquasec/trivy image --severity HIGH,CRITICAL \
-            --exit-code 1 \
-            $ECR_REGISTRY/$ECR_REPOSITORY:staging-latest
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        with:
+          image: ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:staging-latest
+          args: --severity-threshold=high
 
       - name: Container Security Scan - Production Image
+        uses: snyk/actions/docker@master
         env:
-          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-        run: |
-          docker run --rm -v /var/run/docker.sock:/var/run/docker.sock \
-            aquasec/trivy image --severity HIGH,CRITICAL \
-            --exit-code 1 \
-            $ECR_REGISTRY/$ECR_REPOSITORY:prod-latest
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        with:
+          image: ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:prod-latest
+          args: --severity-threshold=high
 
       - name: Container Security Scan - Prometheus Image
+        uses: snyk/actions/docker@master
         env:
-          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-        run: |
-          docker run --rm -v /var/run/docker.sock:/var/run/docker.sock \
-            aquasec/trivy image --severity HIGH,CRITICAL \
-            --exit-code 1 \
-            $ECR_REGISTRY/$ECR_REPOSITORY:prometheus-latest
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        with:
+          image: ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:prometheus-latest
+          args: --severity-threshold=high
 
       - name: Push all images to ECR (only after security scans pass)
         env:
