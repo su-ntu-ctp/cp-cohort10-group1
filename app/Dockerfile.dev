@@ -2,9 +2,12 @@ FROM node:18-alpine
 
 WORKDIR /app
 
-COPY package*.json ./
+# Remove old global npm and install the latest
+RUN rm -rf /usr/local/lib/node_modules/npm \
+    && npm install -g npm@10.9.0
 
-RUN npm install -g npm@10.9.0 && npm ci
+COPY package*.json ./
+RUN npm ci
 
 COPY . .
 

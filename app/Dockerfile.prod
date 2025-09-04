@@ -3,8 +3,12 @@
 FROM node:18-alpine AS builder
 WORKDIR /app
 
+# Remove old global npm and install the latest
+RUN rm -rf /usr/local/lib/node_modules/npm \
+    && npm install -g npm@10.9.0
+
 COPY package*.json ./
-RUN npm install -g npm@10.9.0 && npm ci --only=production && npm cache clean --force
+RUN npm ci --only=production && npm cache clean --force
 COPY . .
 
 FROM gcr.io/distroless/nodejs18-debian11
