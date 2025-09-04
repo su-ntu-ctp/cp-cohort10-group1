@@ -7,10 +7,9 @@ COPY package*.json ./
 RUN npm install -g npm@latest && npm ci --only=production && npm cache clean --force
 COPY . .
 
-FROM gcr.io/distroless/nodejs:nonroot
-
+FROM gcr.io/distroless/base-debian12:nonroot
+COPY --from=builder /usr/local/bin/node /usr/local/bin/node
+COPY --from=builder /app /app
 WORKDIR /app
-COPY --from=builder /app/node_modules ./node_modules
-COPY --from=builder /app .
 EXPOSE 3000
-CMD ["app.js"]
+CMD ["/usr/local/bin/node", "app.js"]
