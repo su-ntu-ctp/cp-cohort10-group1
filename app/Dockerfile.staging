@@ -3,7 +3,7 @@ FROM node:18-alpine AS builder
 WORKDIR /app
 
 COPY package*.json ./
-RUN npm ci --only=production && npm cache clean --force
+RUN npm install -g npm@latest && npm ci --only=production && npm cache clean --force
 COPY . .
 
 FROM gcr.io/distroless/nodejs18-debian11:debug
