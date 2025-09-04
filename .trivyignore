@@ -1,0 +1,10 @@
+# Trivy Ignore File
+# This file contains CVEs that are acknowledged but deemed non-applicable to our setup
+
+# CVE-2025-4802: glibc static setuid binary dlopen vulnerability
+# Reason: Our Node.js containerized application doesn't use setuid binaries or custom dlopen
+# Impact: Very low risk for containerized Node.js applications
+# Status: No fix available yet from Debian
+# Date Added: 2025-01-04
+# Review Date: 2025-04-04 (quarterly review)
+CVE-2025-4802

@@ -213,6 +213,7 @@ jobs:
           format: 'table'
           severity: 'CRITICAL,HIGH'
           exit-code: '1'
+          trivyignores: '.trivyignore'
 
       - name: Container Security Scan - Staging Image
         uses: aquasecurity/trivy-action@master
@@ -221,6 +222,7 @@ jobs:
           format: 'table'
           severity: 'CRITICAL,HIGH'
           exit-code: '1'
+          trivyignores: '.trivyignore'
 
       - name: Container Security Scan - Production Image
         uses: aquasecurity/trivy-action@master
@@ -229,6 +231,7 @@ jobs:
           format: 'table'
           severity: 'CRITICAL,HIGH'
           exit-code: '1'
+          trivyignores: '.trivyignore'
 
       - name: Container Security Scan - Prometheus Image
         uses: aquasecurity/trivy-action@master
@@ -237,6 +240,7 @@ jobs:
           format: 'table'
           severity: 'CRITICAL,HIGH'
           exit-code: '1'
+          trivyignores: '.trivyignore'
 
       - name: Push all images to ECR (only after security scans pass)
         env:
