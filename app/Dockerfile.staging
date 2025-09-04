@@ -6,7 +6,7 @@ COPY package*.json ./
 RUN npm install -g npm@latest && npm ci --only=production && npm cache clean --force
 COPY . .
 
-FROM gcr.io/distroless/nodejs18-debian11:debug
+FROM gcr.io/distroless/nodejs20-debian12:debug
 WORKDIR /app
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app .
