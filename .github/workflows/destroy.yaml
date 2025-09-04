@@ -1,0 +1,79 @@
+name: Destroy Infrastructure
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to destroy'
+        required: true
+        default: 'dev'
+        type: choice
+        options:
+        - dev
+        - staging
+        - prod
+      branch:
+        description: 'Branch to run from'
+        required: true
+        default: 'dev'
+        type: choice
+        options:
+        - dev
+        - staging
+        - main
+      confirm_destroy:
+        description: 'Type "DESTROY" to confirm'
+        required: true
+        type: string
+
+env:
+  AWS_REGION: ap-southeast-1
+
+jobs:
+  destroy:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - name: Validate confirmation
+        run: |
+          if [[ "${{ github.event.inputs.confirm_destroy }}" != "DESTROY" ]]; then
+            echo "❌ Must type 'DESTROY' to confirm"
+            exit 1
+          fi
+
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.branch }}
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_GITHUB_ACTIONS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Get backend configurations
+        run: |
+          aws ssm get-parameter \
+            --name "/terraform/backend/shopbot" \
+            --with-decryption \
+            --query "Parameter.Value" \
+            --output text > infra/terraform/backend.hcl
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.11.4
+
+      - name: Terraform Init
+        working-directory: infra/terraform
+        run: terraform init -reconfigure -backend-config=backend.hcl
+
+      - name: Terraform Destroy
+        working-directory: infra/terraform
+        run: |
+          terraform workspace select ${{ github.event.inputs.environment }}
+          terraform destroy -var-file="terraform.tfvars.${{ github.event.inputs.environment }}" -auto-approve
+          echo "✅ ${{ github.event.inputs.environment }} infrastructure destroyed"
