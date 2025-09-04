@@ -182,25 +182,25 @@ jobs:
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
         run: |
-          docker build -f app/Dockerfile.dev -t $ECR_REGISTRY/$ECR_REPOSITORY:dev-latest app/
+          docker build --no-cache -f app/Dockerfile.dev -t $ECR_REGISTRY/$ECR_REPOSITORY:dev-latest app/
 
       - name: Build staging image (distroless with debug)
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
         run: |
-          docker build -f app/Dockerfile.staging -t $ECR_REGISTRY/$ECR_REPOSITORY:staging-latest app/
+          docker build --no-cache -f app/Dockerfile.staging -t $ECR_REGISTRY/$ECR_REPOSITORY:staging-latest app/
 
       - name: Build production image (pure distroless, no debug)
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
         run: |
-          docker build -f app/Dockerfile.prod -t $ECR_REGISTRY/$ECR_REPOSITORY:prod-latest app/
+          docker build --no-cache -f app/Dockerfile.prod -t $ECR_REGISTRY/$ECR_REPOSITORY:prod-latest app/
 
       - name: Build Prometheus image
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
         run: |
-          docker build -f infra/Dockerfile.prometheus -t $ECR_REGISTRY/$ECR_REPOSITORY:prometheus-latest infra/
+          docker build --no-cache -f infra/Dockerfile.prometheus -t $ECR_REGISTRY/$ECR_REPOSITORY:prometheus-latest infra/
 
       - name: Container Security Scan - Dev Image
         env:
