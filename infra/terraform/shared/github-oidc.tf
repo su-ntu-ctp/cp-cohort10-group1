@@ -55,6 +55,7 @@ resource "aws_iam_role_policy" "github_actions_ecr" {
           "cloudwatch:*",
           "s3:*",
           "autoscaling:*",
+          "application-autoscaling:*",
           "ssm:GetParameter",
           "ssm:PutParameter",
           "ssm:ListTagsForResource",

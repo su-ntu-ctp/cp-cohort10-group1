@@ -8,11 +8,8 @@
 name: Deploy to Development
 
 on:
-  pull_request:
-    branches: [ dev ]
-    types: [ closed ]
   push:
-    branches: [ dev ]
+    branches: [ vrushali/testing ]
 
 env:
   AWS_REGION: ap-southeast-1
@@ -95,12 +92,13 @@ jobs:
         working-directory: infra/terraform/shared
         run: terraform validate
 
-      - name: Terraform Security Scan
-        uses: aquasecurity/tfsec-action@v1.0.3
+      - name: Infrastructure Security Scan with Checkov
+        uses: bridgecrewio/checkov-action@master
         with:
-          working_directory: infra/terraform
+          directory: infra/terraform
+          framework: terraform
           soft_fail: true
-          additional_args: --minimum-severity HIGH
+          quiet: true
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -111,7 +109,7 @@ jobs:
 
       - name: Install dependencies
         working-directory: app
-        run: npm install
+        run: npm ci
 
       - name: Node.js Security Audit
         working-directory: app
@@ -180,51 +178,80 @@ jobs:
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
 
-      - name: Build and push development image (with shell access)
+      - name: Clear Docker cache
+        run: |
+          docker system prune -af
+
+      - name: Build development image (with shell access)
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
         run: |
-          docker build -f app/Dockerfile.dev -t $ECR_REGISTRY/$ECR_REPOSITORY:dev-latest app/
+          docker build --no-cache -f app/Dockerfile.dev -t $ECR_REGISTRY/$ECR_REPOSITORY:dev-latest app/
+
+      - name: Build staging image (distroless with debug)
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+        run: |
+          docker build --no-cache -f app/Dockerfile.staging -t $ECR_REGISTRY/$ECR_REPOSITORY:staging-latest app/
+
+      - name: Build production image (pure distroless, no debug)
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+        run: |
+          docker build --no-cache -f app/Dockerfile.prod -t $ECR_REGISTRY/$ECR_REPOSITORY:prod-latest app/
+
+      - name: Build Prometheus image
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+        run: |
+          docker build --no-cache -f infra/Dockerfile.prometheus -t $ECR_REGISTRY/$ECR_REPOSITORY:prometheus-latest infra/
+
+      - name: Container Security Scan - Dev Image
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:dev-latest
+          format: 'table'
+          severity: 'CRITICAL,HIGH'
+          exit-code: '1'
+          trivyignores: '.trivyignore'
+
+      - name: Container Security Scan - Staging Image
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:staging-latest
+          format: 'table'
+          severity: 'CRITICAL,HIGH'
+          exit-code: '1'
+          trivyignores: '.trivyignore'
+
+      - name: Container Security Scan - Production Image
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:prod-latest
+          format: 'table'
+          severity: 'CRITICAL,HIGH'
+          exit-code: '1'
+          trivyignores: '.trivyignore'
+
+      - name: Container Security Scan - Prometheus Image
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:prometheus-latest
+          format: 'table'
+          severity: 'CRITICAL,HIGH'
+          exit-code: '1'
+          trivyignores: '.trivyignore'
+
+      - name: Push all images to ECR (only after security scans pass)
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+        run: |
+          echo "🔒 All security scans passed - pushing images to ECR"
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:dev-latest
-
-      - name: Build and push staging image (distroless with debug)
-        env:
-          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-        run: |
-          docker build -f app/Dockerfile.staging -t $ECR_REGISTRY/$ECR_REPOSITORY:staging-latest app/
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:staging-latest
-
-      - name: Build and push production image (pure distroless, no debug)
-        env:
-          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-        run: |
-          docker build -f app/Dockerfile.prod -t $ECR_REGISTRY/$ECR_REPOSITORY:prod-latest app/
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:prod-latest
-
-      - name: Container Security Scan
-        env:
-          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-        run: |
-          docker run --rm -v /var/run/docker.sock:/var/run/docker.sock \
-            aquasec/trivy image --severity HIGH,CRITICAL \
-            --exit-code 1 \
-            $ECR_REGISTRY/$ECR_REPOSITORY:prod-latest || echo "⚠️ Container vulnerabilities found - review required"
-
-      - name: Build and push Prometheus image
-        env:
-          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-        run: |
-          docker build -f infra/Dockerfile.prometheus -t $ECR_REGISTRY/$ECR_REPOSITORY:prometheus-latest infra/
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:prometheus-latest
-
-      - name: Prometheus Container Security Scan
-        env:
-          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-        run: |
-          docker run --rm -v /var/run/docker.sock:/var/run/docker.sock \
-            aquasec/trivy image --severity HIGH,CRITICAL \
-            --exit-code 1 \
-            $ECR_REGISTRY/$ECR_REPOSITORY:prometheus-latest || echo "⚠️ Prometheus container vulnerabilities found - review required"
+          echo "✅ All images pushed successfully"
 
       - name: Update ECS service with dev image
         working-directory: infra/terraform
@@ -235,29 +262,36 @@ jobs:
           echo "✅ Secure prod-latest image ready for promotion"
 
       - name: Force ECS service updates
+        working-directory: infra/terraform
         run: |
+          terraform workspace select dev
+          CLUSTER_NAME=$(terraform output -raw ecs_cluster_name)
+          MAIN_SERVICE=$(terraform output -raw main_service_name)
+          PROMETHEUS_SERVICE=$(terraform output -raw prometheus_service_name)
+          GRAFANA_SERVICE=$(terraform output -raw grafana_service_name)
+          
           aws ecs update-service \
             --cluster $CLUSTER_NAME \
             --service $MAIN_SERVICE \
             --force-new-deployment \
-            --region $AWS_REGION
+            --region ${{ env.AWS_REGION }}
 
           # Update Prometheus service if it exists
-          if aws ecs describe-services --cluster $CLUSTER_NAME --services $PROMETHEUS_SERVICE --region $AWS_REGION >/dev/null 2>&1; then
+          if aws ecs describe-services --cluster $CLUSTER_NAME --services $PROMETHEUS_SERVICE --region ${{ env.AWS_REGION }} >/dev/null 2>&1; then
             aws ecs update-service \
               --cluster $CLUSTER_NAME \
               --service $PROMETHEUS_SERVICE \
               --force-new-deployment \
-              --region $AWS_REGION
+              --region ${{ env.AWS_REGION }}
           fi
 
           # Update Grafana service if it exists
-          if aws ecs describe-services --cluster $CLUSTER_NAME --services $GRAFANA_SERVICE --region $AWS_REGION >/dev/null 2>&1; then
+          if aws ecs describe-services --cluster $CLUSTER_NAME --services $GRAFANA_SERVICE --region ${{ env.AWS_REGION }} >/dev/null 2>&1; then
             aws ecs update-service \
               --cluster $CLUSTER_NAME \
               --service $GRAFANA_SERVICE \
               --force-new-deployment \
-              --region $AWS_REGION
+              --region ${{ env.AWS_REGION }}
           fi
 
       - name: Get deployment URLs

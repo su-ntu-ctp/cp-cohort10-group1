@@ -1,16 +1,15 @@
 
 # Production: Distroless without shell access
-FROM node:18-alpine AS builder
+FROM node:20-alpine AS builder
 WORKDIR /app
 
 COPY package*.json ./
-RUN npm ci --only=production && npm cache clean --force
+RUN npm install -g npm@latest && npm ci --only=production && npm cache clean --force
 COPY . .
 
-FROM gcr.io/distroless/nodejs18-debian11
-
+FROM gcr.io/distroless/base-debian12:nonroot
+COPY --from=builder /usr/local/bin/node /usr/local/bin/node
+COPY --from=builder /app /app
 WORKDIR /app
-COPY --from=builder /app/node_modules ./node_modules
-COPY --from=builder /app .
 EXPOSE 3000
-CMD ["app.js"]
+CMD ["/usr/local/bin/node", "app.js"]

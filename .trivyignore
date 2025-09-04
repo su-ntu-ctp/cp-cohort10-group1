@@ -1,0 +1,24 @@
+# Trivy Ignore File
+# This file contains CVEs that are acknowledged but deemed non-applicable to our setup
+
+# CVE-2025-4802: glibc static setuid binary dlopen vulnerability
+# Reason: Our Node.js containerized application doesn't use setuid binaries or custom dlopen
+# Impact: Very low risk for containerized Node.js applications
+# Status: No fix available yet from Debian
+# Date Added: 2025-01-04
+# Review Date: 2025-04-04 (quarterly review)
+CVE-2025-4802
+
+# CVE-2025-47907: Go stdlib database/sql Postgres Scan Race Condition
+# Error: "database/sql: Postgres Scan Race Condition" in Prometheus binary (Go v1.24.5)
+# Reason: This vulnerability affects Go's database/sql package when scanning Postgres query results
+# Why Ignored: 
+#   - Our Prometheus setup uses time-series storage (TSDB), not Postgres database
+#   - Prometheus doesn't use database/sql package for its core functionality
+#   - Vulnerability only affects applications that scan Postgres query results concurrently
+#   - Our monitoring stack: Prometheus → TSDB → Grafana (no Postgres involved)
+# Impact: Zero impact on our monitoring infrastructure
+# Status: Fixed in Go 1.23.12, 1.24.6 - will be resolved when Prometheus updates Go version
+# Date Added: 2025-01-04
+# Review Date: 2025-04-04 (quarterly review)
+CVE-2025-47907
