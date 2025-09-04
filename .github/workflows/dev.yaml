@@ -207,36 +207,40 @@ jobs:
           docker build --no-cache -f infra/Dockerfile.prometheus -t $ECR_REGISTRY/$ECR_REPOSITORY:prometheus-latest infra/
 
       - name: Container Security Scan - Dev Image
-        uses: snyk/actions/docker@master
-        env:
-          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        uses: aquasecurity/trivy-action@master
         with:
-          image: ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:dev-latest
-          args: --severity-threshold=high
+          image-ref: ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:dev-latest
+          format: 'sarif'
+          output: 'trivy-dev-results.sarif'
+          severity: 'CRITICAL,HIGH'
+          exit-code: '1'
 
       - name: Container Security Scan - Staging Image
-        uses: snyk/actions/docker@master
-        env:
-          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        uses: aquasecurity/trivy-action@master
         with:
-          image: ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:staging-latest
-          args: --severity-threshold=high
+          image-ref: ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:staging-latest
+          format: 'sarif'
+          output: 'trivy-staging-results.sarif'
+          severity: 'CRITICAL,HIGH'
+          exit-code: '1'
 
       - name: Container Security Scan - Production Image
-        uses: snyk/actions/docker@master
-        env:
-          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        uses: aquasecurity/trivy-action@master
         with:
-          image: ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:prod-latest
-          args: --severity-threshold=high
+          image-ref: ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:prod-latest
+          format: 'sarif'
+          output: 'trivy-prod-results.sarif'
+          severity: 'CRITICAL,HIGH'
+          exit-code: '1'
 
       - name: Container Security Scan - Prometheus Image
-        uses: snyk/actions/docker@master
-        env:
-          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        uses: aquasecurity/trivy-action@master
         with:
-          image: ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:prometheus-latest
-          args: --severity-threshold=high
+          image-ref: ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:prometheus-latest
+          format: 'sarif'
+          output: 'trivy-prometheus-results.sarif'
+          severity: 'CRITICAL,HIGH'
+          exit-code: '1'
 
       - name: Push all images to ECR (only after security scans pass)
         env:
