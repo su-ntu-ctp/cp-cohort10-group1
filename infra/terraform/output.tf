@@ -37,7 +37,7 @@ output "grafana_datasource_setup" {
   description = "Commands to setup Grafana data sources and get UIDs"
   value       = <<-EOT
 # After deployment, setup Grafana data sources:
-# 1. Access Grafana: https://${var.domain_name}/grafana (admin/admin123)
+# 1. Access Grafana: https://${var.domain_name}/grafana (admin)
 # 2. Add CloudWatch data source (get UID from URL)
 # 3. Add Prometheus data source: https://${var.domain_name}/prometheus (get UID from URL)
 # 4. Run: ./update-dashboard.sh <cloudwatch_uid> <prometheus_uid> ${aws_ecs_cluster.shopbot.name} ${aws_ecs_service.shopbot.name} ${var.aws_region}

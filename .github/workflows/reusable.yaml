@@ -294,8 +294,8 @@ jobs:
           echo "📊 Getting ${{ env.ENVIRONMENT }} deployment outputs..."
           APPLICATION_URL=$(terraform output -raw application_url || echo "Not available")
           CLOUDWATCH_URL=$(terraform output -raw cloudwatch_dashboard_url || echo "Not available")
-          GRAFANA_URL=$(terraform output -raw grafana_dashboard_url || echo "Not available")
-          PROMETHEUS_URL=$(terraform output -raw prometheus_metrics_url || echo "Not available")
+          GRAFANA_URL=$(terraform output -raw grafana_url || echo "Not available")
+          PROMETHEUS_URL=$(terraform output -raw prometheus_url || echo "Not available")
           
           echo "application_url=$APPLICATION_URL" >> $GITHUB_OUTPUT
           echo "cloudwatch_url=$CLOUDWATCH_URL" >> $GITHUB_OUTPUT
