@@ -17,7 +17,7 @@ jobs:
     uses: ./.github/workflows/reusable.yaml
     with:
       environment: prod
-      require_approval: true
+      # require_approval: true
       source_branch: staging
       target_branch: production
       github_environment: production
