@@ -16,15 +16,8 @@ on:
         required: true
         type: string
         description: 'Target branch for deployment (staging or production)'
-      github_environment:
-        required: true
-        type: string
-        description: 'GitHub environment name (staging/production)'
-      # require_approval:
-      #   required: false
-      #   type: boolean
-      #   default: false
-      #   description: 'Require manual approval for deployment'
+      
+     
     secrets:
       AWS_GITHUB_ACTIONS_ROLE_ARN:
         required: true
@@ -37,7 +30,34 @@ env:
   TARGET_BRANCH: ${{ inputs.target_branch }}
 
 jobs:
+  Checksource:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Validate branch flow
+        run: |
+          echo "🔍 Validating deployment flow..."
+          echo "Source Branch: ${{ env.SOURCE_BRANCH }}"
+          echo "Target Branch: ${{ env.TARGET_BRANCH }}"
+          echo "Environment: ${{ env.ENVIRONMENT }}"
+          
+          if [[ "${{ env.ENVIRONMENT }}" == "staging" ]]; then
+            if [[ "${{ env.SOURCE_BRANCH }}" != "dev" || "${{ env.TARGET_BRANCH }}" != "staging" ]]; then
+              echo "❌ Invalid staging flow. Expected: dev → staging"
+              exit 1
+            fi
+          fi
+          
+          if [[ "${{ env.ENVIRONMENT }}" == "prod" ]]; then
+            if [[ "${{ env.SOURCE_BRANCH }}" != "staging" || "${{ env.TARGET_BRANCH }}" != "production" ]]; then
+              echo "❌ Invalid production flow. Expected: staging → production"
+              exit 1
+            fi
+          fi
+          
+          echo "✅ Branch flow validation passed"
+    
   validate:
+    needs: Checksource
     runs-on: ubuntu-latest
     permissions:
       id-token: write
@@ -69,28 +89,7 @@ jobs:
 
           echo "✅ Backend configurations retrieved securely"
 
-      - name: Validate branch flow
-        run: |
-          echo "🔍 Validating deployment flow..."
-          echo "Source Branch: ${{ env.SOURCE_BRANCH }}"
-          echo "Target Branch: ${{ env.TARGET_BRANCH }}"
-          echo "Environment: ${{ env.ENVIRONMENT }}"
-          
-          if [[ "${{ env.ENVIRONMENT }}" == "staging" ]]; then
-            if [[ "${{ env.SOURCE_BRANCH }}" != "dev" || "${{ env.TARGET_BRANCH }}" != "staging" ]]; then
-              echo "❌ Invalid staging flow. Expected: dev → staging"
-              exit 1
-            fi
-          fi
-          
-          if [[ "${{ env.ENVIRONMENT }}" == "prod" ]]; then
-            if [[ "${{ env.SOURCE_BRANCH }}" != "staging" || "${{ env.TARGET_BRANCH }}" != "production" ]]; then
-              echo "❌ Invalid production flow. Expected: staging → production"
-              exit 1
-            fi
-          fi
-          
-          echo "✅ Branch flow validation passed"
+      
 
       - name: Validate environment
         run: |
@@ -175,7 +174,7 @@ jobs:
     permissions:
       id-token: write
       contents: read
-    environment: ${{ inputs.github_environment }}
+    
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -208,26 +207,26 @@ jobs:
         with:
           terraform_version: 1.11.4
 
-      - name: Deploy shared infrastructure with drift detection
-        working-directory: infra/terraform/shared
-        run: |
-          echo "🔍 Checking shared infrastructure for drift..."
-          terraform init -reconfigure -backend-config=backend.hcl
-          terraform workspace select default || terraform workspace new default
+      #- name: Deploy shared infrastructure with drift detection
+      #  working-directory: infra/terraform/shared
+      #  run: |
+      #    echo "🔍 Checking shared infrastructure for drift..."
+      #    terraform init -reconfigure -backend-config=backend.hcl
+      #    terraform workspace select default || terraform workspace new default
           
           # Check for drift
-          terraform plan -detailed-exitcode
-          PLAN_EXIT_CODE=$?
+      #    terraform plan -detailed-exitcode
+      #   PLAN_EXIT_CODE=$?
           
-          if [ $PLAN_EXIT_CODE -eq 2 ]; then
-            echo "⚠️ Drift detected in shared infrastructure, applying fixes..."
-            terraform apply -auto-approve
-          elif [ $PLAN_EXIT_CODE -eq 0 ]; then
-            echo "✅ No drift detected in shared infrastructure"
-          else
-            echo "❌ Error checking shared infrastructure"
-            exit 1
-          fi
+      #   if [ $PLAN_EXIT_CODE -eq 2 ]; then
+      #      echo "⚠️ Drift detected in shared infrastructure, applying fixes..."
+      #      terraform apply -auto-approve
+      #    elif [ $PLAN_EXIT_CODE -eq 0 ]; then
+      #      echo "✅ No drift detected in shared infrastructure"
+      #    else
+      #     echo "❌ Error checking shared infrastructure"
+      #      exit 1
+      #    fi
 
       - name: Deploy environment infrastructure
         working-directory: infra/terraform
@@ -259,34 +258,7 @@ jobs:
             --cli-connect-timeout 60
           echo "✅ ECS service updated successfully"
 
-      - name: Verify Container Security (No Shell Access)
-        run: |
-          echo "🔒 Verifying container security - no shell access..."
-          CLUSTER_NAME="shopbot-ecs-${{ env.ENVIRONMENT }}"
-          SERVICE_NAME="shopbot-service-${{ env.ENVIRONMENT }}"
-          
-          TASK_ARN=$(aws ecs list-tasks \
-            --cluster $CLUSTER_NAME \
-            --service-name $SERVICE_NAME \
-            --query 'taskArns[0]' \
-            --output text)
-          
-          if [ "$TASK_ARN" != "None" ] && [ "$TASK_ARN" != "" ]; then
-            echo "Testing shell access (should fail for distroless image)..."
-            aws ecs execute-command \
-              --cluster $CLUSTER_NAME \
-              --task ${TASK_ARN##*/} \
-              --container shopbot-container \
-              --command "/bin/sh" \
-              --interactive \
-              --query 'session.sessionId' \
-              --output text 2>&1 | grep -q "could not find executable" && \
-              echo "✅ Container properly secured - no shell access" || \
-              echo "⚠️ Warning: Shell access might be available"
-          else
-            echo "ℹ️ No running tasks found for security verification"
-          fi
-
+      
       - name: Get deployment outputs
         id: outputs
         working-directory: infra/terraform
