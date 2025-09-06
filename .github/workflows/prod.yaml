@@ -18,7 +18,7 @@ jobs:
       # require_approval: true
       source_branch: staging
       target_branch: production
-      github_environment: production
+      
     secrets:
       AWS_GITHUB_ACTIONS_ROLE_ARN: ${{ secrets.AWS_GITHUB_ACTIONS_ROLE_ARN }}
 
