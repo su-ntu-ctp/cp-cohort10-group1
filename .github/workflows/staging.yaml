@@ -19,7 +19,6 @@ jobs:
       # require_approval: true
       source_branch: dev
       target_branch: staging
-      github_environment: staging
     secrets:
       AWS_GITHUB_ACTIONS_ROLE_ARN: ${{ secrets.AWS_GITHUB_ACTIONS_ROLE_ARN }}
 
