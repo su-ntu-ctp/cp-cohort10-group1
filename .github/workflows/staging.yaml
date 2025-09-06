@@ -1,0 +1,38 @@
+# .github/workflows/staging.yml
+name: Deploy to Staging
+
+on:
+  pull_request:
+    branches: [staging ]
+    types: [closed]
+  
+
+jobs:
+  deploy-staging:
+    if: github.event.pull_request.merged == true
+    permissions:
+      id-token: write
+      contents: read
+    uses: ./.github/workflows/reusable.yaml
+    with:
+      environment: staging
+      # require_approval: true
+      source_branch: dev
+      target_branch: staging
+      github_environment: staging
+    secrets:
+      AWS_GITHUB_ACTIONS_ROLE_ARN: ${{ secrets.AWS_GITHUB_ACTIONS_ROLE_ARN }}
+
+  notify:
+    runs-on: ubuntu-latest
+    needs: deploy-staging
+    if: always()
+    steps:
+      - name: Notify deployment status
+        run: |
+          if [ "${{ needs.deploy-staging.result }}" = "success" ]; then
+            echo "🎉 Staging deployment successful!"
+            echo "🔗 Application: https://staging-shopbot.sctp-sandbox.com"
+          else
+            echo "❌ Staging deployment failed!"
+          fi

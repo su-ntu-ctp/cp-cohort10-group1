@@ -1,0 +1,350 @@
+# .github/workflows/deploy-resuable.yaml
+name: Reusable Staging/Production Deployment
+
+on:
+  workflow_call:
+    inputs:
+      environment:
+        required: true
+        type: string
+        description: 'Target environment (staging or prod)'
+      source_branch:
+        required: true
+        type: string
+        description: 'Source branch for deployment (dev or staging)'
+      target_branch:
+        required: true
+        type: string
+        description: 'Target branch for deployment (staging or production)'
+      github_environment:
+        required: true
+        type: string
+        description: 'GitHub environment name (staging/production)'
+      # require_approval:
+      #   required: false
+      #   type: boolean
+      #   default: false
+      #   description: 'Require manual approval for deployment'
+    secrets:
+      AWS_GITHUB_ACTIONS_ROLE_ARN:
+        required: true
+
+env:
+  AWS_REGION: ap-southeast-1
+  ECR_REPOSITORY: shopbot
+  ENVIRONMENT: ${{ inputs.environment }}
+  SOURCE_BRANCH: ${{ inputs.source_branch }}
+  TARGET_BRANCH: ${{ inputs.target_branch }}
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_GITHUB_ACTIONS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Get backend configurations from Parameter Store
+        run: |
+          echo "🔄 Fetching secure backend configurations..."
+          aws ssm get-parameter \
+            --name "/terraform/backend/shopbot" \
+            --with-decryption \
+            --query "Parameter.Value" \
+            --output text > infra/terraform/backend.hcl
+
+          aws ssm get-parameter \
+            --name "/terraform/backend/shared" \
+            --with-decryption \
+            --query "Parameter.Value" \
+            --output text > infra/terraform/shared/backend.hcl
+
+          echo "✅ Backend configurations retrieved securely"
+
+      - name: Validate branch flow
+        run: |
+          echo "🔍 Validating deployment flow..."
+          echo "Source Branch: ${{ env.SOURCE_BRANCH }}"
+          echo "Target Branch: ${{ env.TARGET_BRANCH }}"
+          echo "Environment: ${{ env.ENVIRONMENT }}"
+          
+          if [[ "${{ env.ENVIRONMENT }}" == "staging" ]]; then
+            if [[ "${{ env.SOURCE_BRANCH }}" != "dev" || "${{ env.TARGET_BRANCH }}" != "staging" ]]; then
+              echo "❌ Invalid staging flow. Expected: dev → staging"
+              exit 1
+            fi
+          fi
+          
+          if [[ "${{ env.ENVIRONMENT }}" == "prod" ]]; then
+            if [[ "${{ env.SOURCE_BRANCH }}" != "staging" || "${{ env.TARGET_BRANCH }}" != "production" ]]; then
+              echo "❌ Invalid production flow. Expected: staging → production"
+              exit 1
+            fi
+          fi
+          
+          echo "✅ Branch flow validation passed"
+
+      - name: Validate environment
+        run: |
+          echo "Validating ${{ env.ENVIRONMENT }} environment..."
+          if [[ "${{ env.ENVIRONMENT }}" != "staging" && "${{ env.ENVIRONMENT }}" != "prod" ]]; then
+            echo "❌ Invalid environment: ${{ env.ENVIRONMENT }}"
+            exit 1
+          fi
+          if [[ ! -f "infra/terraform/terraform.tfvars.${{ env.ENVIRONMENT }}" ]]; then
+            echo "❌ Missing terraform.tfvars.${{ env.ENVIRONMENT }} file"
+            exit 1
+          fi
+          aws sts get-caller-identity
+          echo "✅ ${{ env.ENVIRONMENT }} environment validation passed"
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.11.4
+
+      - name: Terraform Format Check (Main)
+        working-directory: infra/terraform
+        run: terraform fmt -check
+
+      - name: Terraform Format Check (Shared)
+        working-directory: infra/terraform/shared
+        run: terraform fmt -check
+
+      - name: Terraform Init (Main)
+        working-directory: infra/terraform
+        run: terraform init -reconfigure -backend-config=backend.hcl
+
+      - name: Terraform Init (Shared)
+        working-directory: infra/terraform/shared
+        run: terraform init -reconfigure -backend-config=backend.hcl
+
+      - name: Terraform Validate (Main)
+        working-directory: infra/terraform
+        run: terraform validate
+
+      - name: Terraform Validate (Shared)
+        working-directory: infra/terraform/shared
+        run: terraform validate
+
+      - name: Infrastructure Security Scan with Checkov
+        uses: bridgecrewio/checkov-action@master
+        with:
+          directory: infra/terraform
+          framework: terraform
+          soft_fail: true
+          quiet: true
+
+      - name: Verify required image exists in ECR
+        run: |
+          IMAGE_TAG=$(grep "image_tag" infra/terraform/terraform.tfvars.${{ env.ENVIRONMENT }} | cut -d'"' -f2)
+          echo "🔍 Verifying $IMAGE_TAG image exists in ECR..."
+          
+          IMAGE_EXISTS=$(aws ecr describe-images \
+            --repository-name $ECR_REPOSITORY \
+            --image-ids imageTag=$IMAGE_TAG \
+            --region $AWS_REGION \
+            --query 'imageDetails[0].imageTags[0]' \
+            --output text 2>/dev/null || echo "None")
+          
+          if [ "$IMAGE_EXISTS" = "None" ] || [ "$IMAGE_EXISTS" = "null" ]; then
+            echo "❌ $IMAGE_TAG image not found in ECR"
+            echo "Please ensure dev workflow has completed successfully"
+            exit 1
+          fi
+          
+          echo "✅ $IMAGE_TAG image verified in ECR"
+
+      - name: Terraform Plan
+        working-directory: infra/terraform
+        run: |
+          terraform workspace select ${{ env.ENVIRONMENT }} || terraform workspace new ${{ env.ENVIRONMENT }}
+          terraform plan -var-file="terraform.tfvars.${{ env.ENVIRONMENT }}"
+
+  deploy:
+    needs: validate
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    environment: ${{ inputs.github_environment }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_GITHUB_ACTIONS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Get backend configurations from Parameter Store
+        run: |
+          echo "🔄 Fetching secure backend configurations..."
+          aws ssm get-parameter \
+            --name "/terraform/backend/shopbot" \
+            --with-decryption \
+            --query "Parameter.Value" \
+            --output text > infra/terraform/backend.hcl
+
+          aws ssm get-parameter \
+            --name "/terraform/backend/shared" \
+            --with-decryption \
+            --query "Parameter.Value" \
+            --output text > infra/terraform/shared/backend.hcl
+
+          echo "✅ Backend configurations retrieved securely"
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.11.4
+
+      - name: Deploy shared infrastructure with drift detection
+        working-directory: infra/terraform/shared
+        run: |
+          echo "🔍 Checking shared infrastructure for drift..."
+          terraform init -reconfigure -backend-config=backend.hcl
+          terraform workspace select default || terraform workspace new default
+          
+          # Check for drift
+          terraform plan -detailed-exitcode
+          PLAN_EXIT_CODE=$?
+          
+          if [ $PLAN_EXIT_CODE -eq 2 ]; then
+            echo "⚠️ Drift detected in shared infrastructure, applying fixes..."
+            terraform apply -auto-approve
+          elif [ $PLAN_EXIT_CODE -eq 0 ]; then
+            echo "✅ No drift detected in shared infrastructure"
+          else
+            echo "❌ Error checking shared infrastructure"
+            exit 1
+          fi
+
+      - name: Deploy environment infrastructure
+        working-directory: infra/terraform
+        run: |
+          terraform init -reconfigure -backend-config=backend.hcl
+          terraform workspace select ${{ env.ENVIRONMENT }} || terraform workspace new ${{ env.ENVIRONMENT }}
+          terraform apply -var-file="terraform.tfvars.${{ env.ENVIRONMENT }}" -auto-approve
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Update ECS service
+        run: |
+          echo "🔄 Forcing ECS service update for ${{ env.ENVIRONMENT }}..."
+          CLUSTER_NAME="shopbot-ecs-${{ env.ENVIRONMENT }}"
+          SERVICE_NAME="shopbot-service-${{ env.ENVIRONMENT }}"
+          
+          aws ecs update-service \
+            --cluster $CLUSTER_NAME \
+            --service $SERVICE_NAME \
+            --force-new-deployment
+          
+          echo "⏳ Waiting for service to stabilize..."
+          aws ecs wait services-stable \
+            --cluster $CLUSTER_NAME \
+            --services $SERVICE_NAME \
+            --cli-read-timeout 900 \
+            --cli-connect-timeout 60
+          echo "✅ ECS service updated successfully"
+
+      - name: Verify Container Security (No Shell Access)
+        run: |
+          echo "🔒 Verifying container security - no shell access..."
+          CLUSTER_NAME="shopbot-ecs-${{ env.ENVIRONMENT }}"
+          SERVICE_NAME="shopbot-service-${{ env.ENVIRONMENT }}"
+          
+          TASK_ARN=$(aws ecs list-tasks \
+            --cluster $CLUSTER_NAME \
+            --service-name $SERVICE_NAME \
+            --query 'taskArns[0]' \
+            --output text)
+          
+          if [ "$TASK_ARN" != "None" ] && [ "$TASK_ARN" != "" ]; then
+            echo "Testing shell access (should fail for distroless image)..."
+            aws ecs execute-command \
+              --cluster $CLUSTER_NAME \
+              --task ${TASK_ARN##*/} \
+              --container shopbot-container \
+              --command "/bin/sh" \
+              --interactive \
+              --query 'session.sessionId' \
+              --output text 2>&1 | grep -q "could not find executable" && \
+              echo "✅ Container properly secured - no shell access" || \
+              echo "⚠️ Warning: Shell access might be available"
+          else
+            echo "ℹ️ No running tasks found for security verification"
+          fi
+
+      - name: Get deployment outputs
+        id: outputs
+        working-directory: infra/terraform
+        run: |
+          echo "📊 Getting ${{ env.ENVIRONMENT }} deployment outputs..."
+          APPLICATION_URL=$(terraform output -raw application_url || echo "Not available")
+          CLOUDWATCH_URL=$(terraform output -raw cloudwatch_dashboard_url || echo "Not available")
+          GRAFANA_URL=$(terraform output -raw grafana_url || echo "Not available")
+          PROMETHEUS_URL=$(terraform output -raw prometheus_url || echo "Not available")
+          
+          echo "application_url=$APPLICATION_URL" >> $GITHUB_OUTPUT
+          echo "cloudwatch_url=$CLOUDWATCH_URL" >> $GITHUB_OUTPUT
+          echo "grafana_url=$GRAFANA_URL" >> $GITHUB_OUTPUT
+          echo "prometheus_url=$PROMETHEUS_URL" >> $GITHUB_OUTPUT
+          
+          echo "🎉 ${{ env.ENVIRONMENT }} deployment completed successfully!"
+          echo "📱 Application URL: $APPLICATION_URL"
+          echo "📊 CloudWatch Dashboard: $CLOUDWATCH_URL"
+          echo "📈 Grafana Dashboard: $GRAFANA_URL"
+          echo "📊 Prometheus Metrics: $PROMETHEUS_URL"
+
+      - name: Health Check and Smoke Tests
+        run: |
+          echo "🏥 Performing health check and smoke tests..."
+          APPLICATION_URL="${{ steps.outputs.outputs.application_url }}"
+          
+          if [ "$APPLICATION_URL" = "Not available" ]; then
+            echo "⚠️ Application URL not available, skipping health checks"
+            exit 0
+          fi
+          
+          # Wait for application to be ready
+          echo "⏳ Waiting for application to be ready..."
+          for i in {1..20}; do
+            if curl -f "$APPLICATION_URL/health" > /dev/null 2>&1; then
+              echo "✅ Application is healthy!"
+              break
+            fi
+            echo "Waiting for application... ($i/20)"
+            sleep 10
+          done
+          
+          # Final health check
+          if ! curl -f "$APPLICATION_URL/health" > /dev/null 2>&1; then
+            echo "❌ Application health check failed"
+            exit 1
+          fi
+          
+          # Basic smoke tests
+          echo "🧪 Running smoke tests..."
+          
+          # Test home page
+          HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "$APPLICATION_URL")
+          if [ "$HTTP_STATUS" -eq 200 ]; then
+            echo "✅ Home page accessible"
+          else
+            echo "❌ Home page returned status: $HTTP_STATUS"
+            exit 1
+          fi
+          
+          echo "✅ All smoke tests passed"

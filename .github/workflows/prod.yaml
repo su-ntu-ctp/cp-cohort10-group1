@@ -1,0 +1,37 @@
+# .github/workflows/prod.yml
+name: Deploy to Production
+
+on:
+  pull_request:
+    branches: [ production ]
+    types: [closed]
+
+jobs:
+  deploy-production:
+    # if: github.event.pull_request.merged == true
+    permissions:
+      id-token: write
+      contents: read
+    uses: ./.github/workflows/reusable.yaml
+    with:
+      environment: prod
+      # require_approval: true
+      source_branch: staging
+      target_branch: production
+      github_environment: production
+    secrets:
+      AWS_GITHUB_ACTIONS_ROLE_ARN: ${{ secrets.AWS_GITHUB_ACTIONS_ROLE_ARN }}
+
+  notify:
+    runs-on: ubuntu-latest
+    needs: deploy-production
+    if: always()
+    steps:
+      - name: Notify deployment status
+        run: |
+          if [ "${{ needs.deploy-production.result }}" = "success" ]; then
+            echo "🎉 Production deployment successful!"
+            echo "🔗 Application: https://shopbot.sctp-sandbox.com"
+          else
+            echo "❌ Production deployment failed!"
+          fi
