@@ -12,15 +12,7 @@ on:
         - dev
         - staging
         - prod
-      branch:
-        description: 'Branch to run from'
-        required: true
-        default: 'dev'
-        type: choice
-        options:
-        - dev
-        - staging
-        - main
+      
       confirm_destroy:
         description: 'Type "DESTROY" to confirm'
         required: true
