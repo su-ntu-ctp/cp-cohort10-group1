@@ -1,0 +1,83 @@
+name: Destroy Shared Infrastructure (Preserve OIDC)
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm_destroy:
+        description: 'Type "DESTROY" to confirm destruction'
+        required: true
+        type: string
+
+env:
+  AWS_REGION: ap-southeast-1
+ 
+
+jobs:
+  destroy-shared:
+    runs-on: ubuntu-latest
+    if: github.event.inputs.confirm_destroy == 'DESTROY'
+    
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_GITHUB_ACTIONS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+
+      
+      - name: Get backend configurations from Parameter Store
+        run: |
+            aws ssm get-parameter \
+            --name "/terraform/backend/shared" \
+            --with-decryption \
+            --query "Parameter.Value" \
+            --output text > infra/terraform/shared/backend.hcl
+
+             echo "✅ Backend configurations retrieved securely"
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.11.4
+
+      - name: Initialize Terraform
+        working-directory: infra/terraform/shared
+        run: terraform init -backend-config=backend.hcl
+
+      - name: Destroy ECR Repository and Lifecycle Policy
+        working-directory: infra/terraform/shared
+        run: |
+          terraform destroy -target=aws_ecr_lifecycle_policy.ecr_policy -auto-approve
+          terraform destroy -target=aws_ecr_repository.shopbot -auto-approve
+          terraform destroy -target=aws_dynamodb_table.terraform_locks -auto-approve
+
+      - name: Manual Cleanup Instructions
+        run: |
+          echo "🎯 Targeted destruction completed successfully!"
+          echo ""
+          echo "✅ Destroyed resources:"
+          echo "  - ECR Repository: shopbot"
+          echo "  - ECR Lifecycle Policy"
+          echo "  - DynamoDB Table: shopbot-terraform-locks"
+          echo ""
+          echo "🔒 Preserved resources:"
+          echo "  - OIDC Provider: https://token.actions.githubusercontent.com"
+          echo "  - IAM Role: shopbot-github-actions-role"
+          echo "  - IAM Policy: shopbot-github-actions-ecr-policy"
+          echo ""
+          echo "📋 Manual cleanup required:"
+          echo "  1. S3 Backend Bucket (if no longer needed):"
+          echo "     aws s3 rb s3://YOUR-TERRAFORM-STATE-BUCKET --force"
+          echo "  2. Parameter Store values (if no longer needed):"
+          echo "     aws ssm delete-parameter --name '/terraform/backend/shared'"
+          echo "  3. OIDC Role (only if completely done with GitHub Actions):"
+          echo "     aws iam delete-role-policy --role-name shopbot-github-actions-role --policy-name shopbot-github-actions-ecr-policy"
+          echo "     aws iam delete-role --role-name shopbot-github-actions-role"
