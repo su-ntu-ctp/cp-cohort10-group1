@@ -101,7 +101,7 @@ resource "aws_ecs_service" "shopbot" {
   task_definition = aws_ecs_task_definition.shopbot.arn
   desired_count   = var.app_count_min
   launch_type     = "FARGATE"
-
+  enable_execute_command = true
 
   network_configuration {
     subnets          = module.vpc.private_subnets
