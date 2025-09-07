@@ -96,12 +96,12 @@ resource "aws_ecs_task_definition" "shopbot" {
 }
 
 resource "aws_ecs_service" "shopbot" {
-  name            = "${var.prefix}-service-${var.environment}"
-  cluster         = aws_ecs_cluster.shopbot.id
-  task_definition = aws_ecs_task_definition.shopbot.arn
-  desired_count   = var.app_count_min
-  launch_type     = "FARGATE"
-
+  name                   = "${var.prefix}-service-${var.environment}"
+  cluster                = aws_ecs_cluster.shopbot.id
+  task_definition        = aws_ecs_task_definition.shopbot.arn
+  desired_count          = var.app_count_min
+  launch_type            = "FARGATE"
+  enable_execute_command = true
 
   network_configuration {
     subnets          = module.vpc.private_subnets
