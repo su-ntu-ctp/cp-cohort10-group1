@@ -21,10 +21,6 @@ resource "aws_iam_role" "ecs_task_execution_role" {
   })
 }
 
-resource "aws_iam_role_policy_attachment" "ecs_task_exec_attach" {
-  role       = aws_iam_role.ecs_task_execution_role.name
-  policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
-}
 
 # ECS Task Role - for application permissions
 resource "aws_iam_role" "ecs_task_role" {
@@ -129,6 +125,31 @@ resource "aws_iam_policy" "cloudwatch_read" {
   })
 }
 
+# ECS Exec permissions - for shell access
+resource "aws_iam_policy" "ecs_exec_access" {
+  name        = "${var.prefix}-ecs-exec-access-${var.environment}"
+  description = "Allow ECS Exec access for debugging"
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action = [
+          "ssmmessages:CreateControlChannel",
+          "ssmmessages:CreateDataChannel",
+          "ssmmessages:OpenControlChannel",
+          "ssmmessages:OpenDataChannel"
+        ]
+        Effect   = "Allow"
+        Resource = "*"
+      }
+    ]
+  })
+}
+
+
+
+
 # ============================================================================
 # 3. POLICY ATTACHMENTS - Connect Roles to Permissions
 # ============================================================================
@@ -156,3 +177,16 @@ resource "aws_iam_role_policy_attachment" "task_role_cloudwatch" {
   role       = aws_iam_role.ecs_task_role.name
   policy_arn = aws_iam_policy.cloudwatch_read.arn
 }
+
+# Attach ECS Exec permissions to task role
+resource "aws_iam_role_policy_attachment" "task_role_ecs_exec" {
+  role       = aws_iam_role.ecs_task_role.name
+  policy_arn = aws_iam_policy.ecs_exec_access.arn
+}
+
+# Attach ECS Task Execution Role to ECS Task Execution Polic
+resource "aws_iam_role_policy_attachment" "ecs_task_exec_attach" {
+  role       = aws_iam_role.ecs_task_execution_role.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
+}
+
