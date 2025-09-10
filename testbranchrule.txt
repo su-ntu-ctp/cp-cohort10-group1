@@ -1,0 +1,4 @@
+This is a test file to check branch protection 
+Test 1
+Test 2
+Test 3
