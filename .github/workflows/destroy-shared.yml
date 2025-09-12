@@ -51,6 +51,13 @@ jobs:
       - name: Initialize Terraform
         working-directory: infra/terraform/shared
         run: terraform init -backend-config=backend.hcl
+        
+      - name: Force delete ECR images
+        run: |
+          aws ecr list-images --repository-name shopbot --query 'imageIds[*]' --output json > /tmp/images.json 2>/dev/null || true
+          if [ -s /tmp/images.json ] && [ "$(cat /tmp/images.json)" != "[]" ]; then
+            aws ecr batch-delete-image --repository-name shopbot --image-ids file:///tmp/images.json
+          fi
 
       - name: Destroy ECR Repository and Lifecycle Policy
         working-directory: infra/terraform/shared
