@@ -8,7 +8,7 @@ on:
 
 jobs:
   deploy-production:
-    # if: github.event.pull_request.merged == true
+    if: github.event.pull_request.merged == true
     permissions:
       id-token: write
       contents: read
@@ -16,7 +16,7 @@ jobs:
     with:
       environment: prod
       # require_approval: true
-      source_branch: staging
+      source_branch: ${{ github.event.pull_request.head.ref }}
       target_branch: production
       
     secrets:
