@@ -1,205 +1,247 @@
 # ShopBot E-commerce Application
 
-Contributors - Vrushali Bavare and Ramya Rajendran.
-Group 1 - NTU SCTP Cohort 10
+**Contributors:** Vrushali Bavare and Ramya Rajendran  
+**Group 1 - NTU SCTP Cohort 10**
 
-A simple e-commerce application built with Node.js and Express, designed to be easily containerized and deployed to AWS ECS Fargate.
+A cloud-native e-commerce application with Node.js/Express backend, comprehensive monitoring, auto-scaling, and multi-environment CI/CD deployment on AWS ECS Fargate.
 
-# ShopBot E-commerce Infrastructure
-
-This Terraform configuration deploys a complete e-commerce application infrastructure on AWS using modern cloud-native services.
-
-## Architecture Overview
+## 🏗️ Architecture
 
 ```
-Internet → ALB → ECS Fargate → DynamoDB
-                    ↓
-              CloudWatch Logs
-                    ↓
-            Prometheus & Grafana
+Internet → Route 53 → ALB (HTTPS) → ECS Fargate → DynamoDB
+                         ↓
+                   CloudWatch Logs
+                         ↓
+               Prometheus & Grafana
 ```
 
-## Infrastructure Components
+## 📁 Project Structure
+
+```
+cp-cohort10-group1/
+├── app/                    # Node.js E-commerce Application
+│   ├── controllers/        # Business logic (products, cart, orders)
+│   ├── models/            # Data models (DynamoDB integration)
+│   ├── routes/            # API routes (products, cart, orders, AI)
+│   ├── views/             # EJS templates (home, products, cart, checkout)
+│   ├── public/            # Static assets (CSS, JS, images)
+│   ├── utils/             # Utilities (DynamoDB helper)
+│   ├── Dockerfile.*       # Multi-environment Docker builds
+│   └── package.json       # Dependencies & scripts
+├── infra/                 # Infrastructure as Code
+│   ├── terraform/         # Terraform configurations
+│   │   ├── shared/        # Shared resources (OIDC, ECR)
+│   │   ├── *.tf          # Infrastructure modules
+│   │   └── terraform.tfvars.*  # Environment-specific configs
+│   ├── grafana-dashboards/ # Pre-configured monitoring dashboards
+│   └── Dockerfile.prometheus # Prometheus monitoring container
+├── .github/workflows/     # CI/CD pipelines (dev, staging, prod)
+├── scripts/               # Deployment & utility scripts
+├── docs/                  # Project documentation
+├── testing/               # Test configurations
+└── README.md             # This file
+```
+
+## 🚀 Features
+
+### E-commerce Application
+- **Product Catalog**: Browse products with detailed views
+- **Shopping Cart**: Add/remove items with session persistence
+- **Order Management**: Complete checkout and order tracking
+- **AI Chatbot**: Customer support integration
+- **Prometheus Metrics**: Business & technical KPIs
+- **Health Monitoring**: Comprehensive health checks
+- **Rate Limiting**: Protection against abuse
+
+### Cloud Infrastructure
+- **Multi-Environment**: Dev, Staging, Production isolation
+- **Auto-Scaling**: CPU/Memory-based with custom metrics
+- **Security**: HTTPS-only, VPC isolation, IAM least privilege
+- **Monitoring**: Prometheus, Grafana, CloudWatch integration
+- **CI/CD**: GitHub Actions with security scanning
+- **Container Security**: Distroless images, vulnerability scanning
+
+## 🌍 Environment Configuration
+
+| Environment | Domain | CPU | Memory | Scaling | Image Type |
+|-------------|--------|-----|--------|---------|------------|
+| **Development** | `dev-shopbot.sctp-sandbox.com` | 256 | 512 MB | 1-3 tasks | Ubuntu (debug) |
+| **Staging** | `staging-shopbot.sctp-sandbox.com` | 512 | 1024 MB | 1-5 tasks | Distroless + debug |
+| **Production** | `shopbot.sctp-sandbox.com` | 1024 | 2048 MB | 3-10 tasks | Pure distroless |
+
+## 🛠️ Prerequisites
+
+- AWS CLI configured with appropriate permissions
+- Terraform >= 1.11.4
+- Docker for container builds
+- Node.js 18+ for local development
+- GitHub OIDC configured for CI/CD
+
+## 🚀 Quick Start
+
+### Local Development
+```bash
+cd app
+npm install
+npm run dev
+# Access: http://localhost:3000
+```
+
+### Deploy Infrastructure
+```bash
+# Deploy shared resources (ECR, OIDC)
+./scripts/deploy-shared.sh
+
+# Deploy environment-specific infrastructure
+./deploy-env-dev.sh
+./deploy-env-staging.sh
+./deploy-env-prod.sh
+```
+
+### Build & Push Images
+```bash
+./scripts/dockerbuild.sh
+```
+
+## 🔄 CI/CD Pipeline
+
+### Workflow Triggers
+- **Development**: PR merge to `dev` → Auto-deploy to dev environment
+- **Staging**: PR merge to `staging` → Auto-deploy to staging environment
+- **Production**: PR merge to `main` → Auto-deploy to production environment
+
+### Security Gates
+- **Infrastructure**: Terraform validation, Checkov security scanning
+- **Application**: npm audit, dependency vulnerability checks
+- **Containers**: Trivy security scanning (CRITICAL/HIGH severity blocking)
+- **Deployment**: Only proceeds after all security scans pass
+
+## 📊 Monitoring & Metrics
+
+### Application Metrics
+- **Business KPIs**: Orders created, cart items, product views, revenue
+- **Performance**: HTTP requests, response times, error rates
+- **Security**: Rate limiting events, failed requests
+
+### Infrastructure Metrics
+- **ECS**: CPU/Memory utilization, task count, scaling events
+- **Load Balancer**: Request count, latency, target health
+- **DynamoDB**: Read/write capacity, throttling events
+
+### Access Points
+- **Application**: `https://{env}-shopbot.sctp-sandbox.com`
+- **Prometheus**: `https://{env}-shopbot.sctp-sandbox.com/prometheus`
+- **Grafana**: `https://{env}-shopbot.sctp-sandbox.com/grafana`
+  - Username: `admin` / Password: `admin123`
+
+## 🔒 Security Features
+
+### Network Security
+- VPC with public/private subnets
+- Security groups with restrictive rules
+- HTTPS-only with SSL termination
+
+### Application Security
+- Rate limiting (100 req/15min general, 10 req/15min orders)
+- Input validation and sanitization
+- Session security with DynamoDB backend
+- Request/response timeouts
+
+### Container Security
+- Multi-stage builds with distroless base images
+- Non-root user execution
+- Vulnerability scanning with Trivy
+- Minimal attack surface
+
+### Infrastructure Security
+- IAM roles with least privilege
+- Encrypted storage (DynamoDB, Secrets Manager)
+- GitHub OIDC for secure CI/CD
+- Parameter Store for sensitive configurations
+
+## 🏗️ Infrastructure Components
 
 ### Core Services
-- **ECS Fargate**: Containerized application hosting
+- **ECS Fargate**: Serverless container hosting
 - **Application Load Balancer**: HTTPS traffic distribution
-- **DynamoDB**: NoSQL database for application data
-- **ECR**: Container image registry
-- **Route 53**: DNS management
-- **ACM**: SSL certificate management
+- **DynamoDB**: NoSQL database (products, sessions, orders)
+- **ECR**: Private container registry with lifecycle policies
+- **Route 53**: DNS management with health checks
+- **ACM**: Automated SSL certificate management
 
 ### Monitoring Stack
-- **Prometheus**: Metrics collection and alerting
-- **Grafana**: Visualization and dashboards
-- **CloudWatch**: AWS native monitoring and logging
+- **Prometheus**: Metrics collection with custom business metrics
+- **Grafana**: Visualization with pre-configured dashboards
+- **CloudWatch**: AWS native monitoring and log aggregation
 
 ### Security & Networking
 - **VPC**: Isolated network environment
 - **Security Groups**: Network access control
-- **IAM Roles**: Service permissions
-- **Secrets Manager**: Secure credential storage
+- **IAM**: Role-based access control
+- **Secrets Manager**: Encrypted credential storage
 
-## File Structure
+## 🔧 Troubleshooting
 
-```
-terraform/
-├── main.tf              # Provider configuration
-├── variables.tf         # Input variables with validation
-├── output.tf           # Infrastructure outputs
-├── networking.tf       # VPC, ALB, security groups
-├── ecs.tf             # ECS cluster and services
-├── iam.tf             # IAM roles and policies
-├── storage.tf         # ECR and DynamoDB tables
-├── dns.tf             # Route 53 and SSL certificates
-├── autoscaling.tf     # Auto scaling configuration
-├── monitoring.tf      # Prometheus and Grafana
-├── couldwatch.tf      # CloudWatch logs and dashboard
-└── environments/      # Environment-specific configurations
-    ├── dev/
-    ├── staging/
-    └── prod/
-```
-
-## Environment Configuration
-
-Each environment has its own configuration:
-
-### Development
-- **Domain**: `dev-shopbot.sctp-sandbox.com`
-- **Resources**: 1 task, 256 CPU, 512 MB memory
-- **Scaling**: 1-3 tasks
-
-### Staging
-- **Domain**: `staging-shopbot.sctp-sandbox.com`
-- **Resources**: 2 tasks, 512 CPU, 1024 MB memory
-- **Scaling**: 1-5 tasks
-
-### Production
-- **Domain**: `shopbot.sctp-sandbox.com`
-- **Resources**: 3 tasks, 1024 CPU, 2048 MB memory
-- **Scaling**: 1-10 tasks
-
-## Prerequisites
-
-1. **AWS CLI** configured with appropriate permissions
-2. **Terraform** >= 1.3.0
-3. **Docker** for building container images
-4. **S3 bucket** for Terraform state storage
-
-## Deployment Instructions
-
-### 1. Build and Push Docker Images
-
+### Health Checks
 ```bash
-# Build and push application image
-./scripts/dockerbuild.sh
+# Application health
+curl https://{env}-shopbot.sctp-sandbox.com/health
 
-# This builds both:
-# - shopbot-ecr:latest (main application)
-# - shopbot-ecr:prometheus (monitoring)
+# Prometheus metrics
+curl https://{env}-shopbot.sctp-sandbox.com/metrics
+
+# Test auto-scaling
+curl "https://{env}-shopbot.sctp-sandbox.com/stress?duration=30000"
 ```
-
-
-
-### 3. Access Applications
-
-After deployment, access your services:
-
-- **Main App**: `https://{environment}-shopbot.sctp-sandbox.com`
-- **Prometheus**: `https://{environment}-shopbot.sctp-sandbox.com/prometheus`
-- **Grafana**: `https://{environment}-shopbot.sctp-sandbox.com/grafana`
-  - Username: `admin`
-  - Password: `admin123`
-
-## Monitoring Setup
-
-### Prometheus Configuration
-- Scrapes application metrics from `/metrics` endpoint
-- Configured in `prometheus.yml`
-- Accessible at `/prometheus` path
-
-### Grafana Dashboards
-1. Add Prometheus data source: `https://{domain}/prometheus`
-2. Import dashboard ID `1860` for Node.js metrics
-3. Create custom dashboards for business metrics
-
-### CloudWatch Dashboard
-- ECS resource utilization
-- Load balancer metrics
-- DynamoDB activity
-- Application logs
-
-## Auto Scaling
-
-The infrastructure includes automatic scaling based on:
-- **CPU Utilization**: Scales when average CPU > 70%
-- **Memory Utilization**: Scales when average memory > 70%
-- **Cooldown Period**: 5 minutes between scaling events
-
-## Security Features
-
-- **Network Isolation**: Private subnets for application containers
-- **Security Groups**: Restrictive ingress/egress rules
-- **IAM Roles**: Least privilege access
-- **Secrets Management**: Encrypted credential storage
-- **HTTPS Only**: SSL termination at load balancer
-
-## Cost Optimization
-
-- **Fargate Spot**: Consider for non-production environments
-- **DynamoDB On-Demand**: Pay per request pricing
-- **Log Retention**: 7 days for app logs, 30 days for monitoring
-- **ECR Lifecycle**: Automatic cleanup of old images
-
-## Troubleshooting
 
 ### Common Issues
-
-1. **Container Won't Start**
-   ```bash
-   aws ecs describe-services --cluster shopbot-ecs-{env} --services shopbot-service-{env}
-   aws logs describe-log-streams --log-group-name /ecs/shopbot-app-{env}
-   ```
-
-2. **SSL Certificate Issues**
-   ```bash
-   aws acm list-certificates --region ap-southeast-1
-   aws route53 list-resource-record-sets --hosted-zone-id {zone-id}
-   ```
-
-3. **Load Balancer Health Checks**
-   ```bash
-   aws elbv2 describe-target-health --target-group-arn {target-group-arn}
-   ```
-
-### Useful Commands
-
 ```bash
-# Check ECS service status
-aws ecs list-services --cluster shopbot-ecs-{env}
-
-# View application logs
+# Container startup issues
+aws ecs describe-services --cluster shopbot-ecs-{env} --services shopbot-service-{env}
 aws logs tail /ecs/shopbot-app-{env} --follow
 
-# Force service deployment
+# Force deployment
 aws ecs update-service --cluster shopbot-ecs-{env} --service shopbot-service-{env} --force-new-deployment
 
-# Check auto scaling activity
+# Auto-scaling activity
 aws application-autoscaling describe-scaling-activities --service-namespace ecs
 ```
 
-## Contributing
+## 🤝 Development Workflow
 
-1. Make changes in feature branches
-2. Test in development environment first
-3. Update documentation for infrastructure changes
-4. Follow Terraform best practices for resource naming
+### Branch Strategy
+- `main` → Production environment
+- `staging` → Staging environment  
+- `dev` → Development environment
+- Feature branches → Create from `dev`
 
-## Support
+### Deployment Flow
+1. Create feature branch from `dev`
+2. Develop and test locally
+3. Create PR to `dev` → Auto-deploy to dev environment
+4. Test in dev, then PR `dev` → `staging`
+5. Test in staging, then PR `staging` → `main`
+6. Production deployment with monitoring
 
-For issues and questions:
+## 📚 Documentation
+
+- **Infrastructure**: [Terraform Documentation](./infra/terraform/README.md)
+- **Monitoring**: [Grafana Dashboards](./infra/grafana-dashboards/README.md)
+- **Testing**: [Testing Guide](./testing/README.md)
+- **API**: [API Documentation](./docs/README.md)
+
+## 📞 Support
+
+**Team Contacts:**
+- **Vrushali Bavare**: Infrastructure & DevOps
+- **Ramya Rajendran**: Application Development & Monitoring
+
+**For Issues:**
 - Check CloudWatch logs for application errors
-- Review Terraform plan before applying changes
-- Use AWS Console for real-time monitoring
-- Consult team members for environment-specific issues
+- Review GitHub Actions for CI/CD pipeline issues
+- Use AWS Console for real-time infrastructure monitoring
+- Monitor Grafana dashboards for performance insights
+
+## 📄 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
