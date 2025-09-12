@@ -57,7 +57,7 @@ jobs:
         run: |
           terraform destroy -target=aws_ecr_lifecycle_policy.ecr_policy -auto-approve
           terraform destroy -target=aws_ecr_repository.shopbot -auto-approve
-          terraform destroy -target=aws_dynamodb_table.terraform_locks -auto-approve
+          terraform destroy -target=aws_dynamodb_table.terraform_locks -lock=false -auto-approve
 
       - name: Manual Cleanup Instructions
         run: |
