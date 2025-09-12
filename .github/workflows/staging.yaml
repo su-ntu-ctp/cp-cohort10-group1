@@ -17,7 +17,7 @@ jobs:
     with:
       environment: staging
       # require_approval: true
-      source_branch: dev
+      source_branch: ${{ github.event.pull_request.head.ref }}
       target_branch: staging
     secrets:
       AWS_GITHUB_ACTIONS_ROLE_ARN: ${{ secrets.AWS_GITHUB_ACTIONS_ROLE_ARN }}

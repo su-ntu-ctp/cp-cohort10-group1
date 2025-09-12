@@ -59,3 +59,17 @@ scripts/deploy-all.sh
 infra/terraform/environments/prod/tfplan/
 infra/terraform/environments/staging/tfplan/
 infra/terraform/environments/dev/tfplan/
+*.sh
+!app/**/*.sh
+infra/**/*.sh
+testbranchrule.txt
+autoscalingexec.txt
+infra/terraform/session-manager-plugin.deb
+docs/GITHUB_WORKFLOWS.md
+infra/grafana-dashboards/setup-dashboard-env.sh
+LICENSE
+infra/grafana-dashboards/shopbot-autoscaling-dev.json
+infra/grafana-dashboards/shopbot-autoscaling-staging.json
+.gitignore
+infra/grafana-dashboards/shopbot-autoscaling.json
+infra/grafana-dashboards/Readme.md
